@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="vehicle_name" default="e100_1" />
+
+  <group ns="vehicle">
+    <param name="robot_description" textfile="$(find part_based_tracking)/../urdf/$(arg vehicle_name).urdf"/>
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="vehicle_state_publisher"/>
+  </group>
+
+  <group ns="target">
+    <param name="robot_description" textfile="$(find part_based_tracking)/../urdf/target.urdf"/>
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="target_state_publisher"/>
+  </group>
+
+  <!-- <group ns="target_behind">
+    <param name="robot_description" textfile="$(find part_based_tracking)/../urdf/target.urdf"/>
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="target_state_publisher"/>
+  </group> -->
+  
+</launch>

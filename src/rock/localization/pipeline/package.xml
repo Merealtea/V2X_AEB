@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>localization_pipeline</name>
+  <version>0.0.1</version>
+  <description>
+    In this package, we combine the latitude/longitude/yaw information
+    from GPS and slam system with IMU and rear wheel encoder.
+    For more information, feel free to contact the maintainer or author.
+  </description>
+  <maintainer email="sjtugscxf@sjtu.edu.cn">Chen Xiaofeng</maintainer>
+  <license>Cyberc3 (SJTU)</license>
+  <author email="sjtugscxf@sjtu.edu.cn">Chen Xiaofeng</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roslib</build_depend> 
+  <depend>eigen</depend>
+  <depend>tf</depend>
+  <depend>roscpp</depend>
+  <depend>rospy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>cyber_msgs</depend>
+  <exec_depend>message_runtime</exec_depend>
+  
+</package>

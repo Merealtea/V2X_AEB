@@ -1,0 +1,9 @@
+Header header
+float32 distance_ref
+float32 distance_feedback
+float32 speed_ref
+float32 acc_ref
+float32 speed_limit_curvature
+float32 acc_limit_curvature
+float32 speed_limit_steer
+float32 acc_limit_steer

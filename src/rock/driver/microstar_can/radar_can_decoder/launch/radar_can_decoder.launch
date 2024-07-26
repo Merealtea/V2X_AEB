@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="radar_can_decoder" type="radar_can_decoder" name="radar_can_decoder" output="screen"/>
+</launch>

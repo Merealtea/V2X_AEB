@@ -1,0 +1,44 @@
+calibration:  # 外参标定数据
+  Pandar40: # sensor frame name
+    x: 1.15    # m to base_link
+    y: 0.0
+    z: 1.96
+    roll: 0.0   # rad to x
+    pitch: 0.0  # rad to y
+    yaw: 1.5315 # rad to z
+  rslidar_left:
+    x: 1.15
+    y: 0.66
+    z: 1.77
+    roll:  -0.900
+    pitch: 0.0
+    yaw: 0.0
+  rslidar_right:
+    x: 1.15
+    y: -0.66
+    z: 1.77
+    roll: 4.003
+    pitch: 0.0
+    yaw: 0.0
+  rslidar_front:
+    x: 3.55
+    y: -0.01
+    z: 0.814
+    roll: 1.424
+    pitch: -0.275
+    yaw: 1.616
+  radar:
+    x: 3.55
+    y: -0.01
+    z: 0.0
+    roll: 0.0
+    pitch: 0.0
+    yaw: -0.0524
+  fisheye_front:
+    x: 3.55
+    y: 0.0
+    z: 0.0
+    roll: 0.0
+    pitch: 0.0
+    yaw: 0.0
+  

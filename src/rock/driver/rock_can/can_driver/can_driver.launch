@@ -1,0 +1,6 @@
+<launch>
+
+<include file = "$(find lkusbcan)/launch/lcan_read_write.launch"/>
+<include file = "$(find can_decoder)/launch/can_decoder.launch"/>
+<include file = "$(find can_encoder)/launch/can_encoder_auto_all.launch"/>
+</launch>

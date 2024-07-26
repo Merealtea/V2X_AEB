@@ -1,0 +1,4 @@
+float32 cpu_percent
+float32 memory_available
+float32 disk_percent
+float32 delay_time

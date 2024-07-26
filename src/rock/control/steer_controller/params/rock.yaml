@@ -1,0 +1,3 @@
+{K_ref_0_20_: 0.8, K_ref_20_40_: 0.5, K_ref_40_60_: 0.2, Ki_error_: 0.0, Kp_error_: 0.0,
+  Kp_wheel_: 916.0, Min_preview_distance_: 6.0, Min_ref_speed_: 12.5, filter_param_: 1.0,
+  max_steering_degree: 430.0, update_param_: false, wheel_zero_: 0.0, wheelbase_: 2.65}

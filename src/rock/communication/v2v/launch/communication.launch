@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="v2v" type="decoder.py" name="v2v_decoder" output="screen"/>
+</launch>

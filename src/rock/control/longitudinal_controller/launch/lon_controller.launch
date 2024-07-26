@@ -1,0 +1,6 @@
+<!-- longitudinal_controller -->
+<launch>
+  <node pkg="longitudinal_controller" type="longitudinal_controller" name="longitudinal_controller" output="screen">
+    <rosparam file="$(find longitudinal_controller)/params/rock.yaml" command="load" />
+  </node>
+</launch>

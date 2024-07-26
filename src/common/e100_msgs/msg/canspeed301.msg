@@ -1,0 +1,9 @@
+Header header
+bool autoDriveMod
+int8 autoShift
+int8 autoBrakeEnable
+int16 autoExpectSpeed
+int8 autoExpectAcc
+int8 autoBrakeRe
+int8 autoCounter
+int8 dataCheckSums

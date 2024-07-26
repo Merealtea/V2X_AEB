@@ -1,0 +1,15 @@
+<launch>
+    <param name="use_sim_time" value="false" />
+    <node pkg="components_visual_tracking" type="components_visual_tracking_node" name="components_visual_tracking" output="screen"/>
+        <rosparam command="load" file="$(find part_based_tracking)/../params/init.yaml" />
+    
+    <!-- <group ns="left">
+        <param name="component_side" value="left"/>
+        <node pkg="components_visual_tracking" type="one_component_tracking.py" name="one_component_tracking" output="screen"/>
+    </group> -->
+
+    <!-- <group ns="right">
+        <param name="component_side" value="right"/>
+        <node pkg="components_visual_tracking" type="one_component_tracking.py" name="one_component_tracking" output="screen"/>
+    </group> -->
+</launch>

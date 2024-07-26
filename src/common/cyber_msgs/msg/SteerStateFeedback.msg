@@ -1,0 +1,6 @@
+Header header
+bool EPS_EPSFailed
+int8 EPS_ACUAbortFeedback
+bool EPS_ACUEpasFailed
+bool EPS_ACUControllerFeedback
+float64 SteeringTorque

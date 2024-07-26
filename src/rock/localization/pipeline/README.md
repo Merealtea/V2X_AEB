@@ -1,0 +1,17 @@
+## localization_pipeline 定位模块接口
+- ### 输入
+  - /Inertial/gps/fix sensor_msgs::NavSatFix 从Inertial+得到的GPS经纬度，时间戳是系统时间
+  - /Inertial/imu/data sensor_msgs::Imu 从Inertial+得到的航向和角速度，时间戳是系统时间
+  - /Inertial/gps/vel geometry_msgs::TwistWithCovarianceStamped 从Inertial+得到的航向和角速度，时间戳是系统时间
+  - /Inertial/time_reference sensor_msgs::TimeReference 从Inertial+得到的UTC时间
+  - /slam/gps/fix sensor_msgs::NavSatFix 从SLAM得到的经纬度，可缺失
+  - /slam/gps/heading sensor_msgs::Imu 从SLAM得到的航向，可缺失
+  - /localize_mode std_msgs::Int8 GPS定位和SLAM定位的直接切换，可缺失，默认为0，GPS定位
+- ### 输出
+  - /localization/estimation cyber_msgs::LocalizationEstimate 融合后总的输出，时间戳是UTC时间，包括经纬度，UTM坐标系下位姿，速度，角速度，加速度，角加速度
+  - /gps_markers visualization_msgs::Marker 原始GPS位置点显示，非定位调试需要可不输出
+  - /gps_poses geometry_msgs::PoseArray 原始GPS位姿箭头显示，非定位调试需要可不输出
+  - /slam_markers visualization_msgs::Marker 原始SLAM位置点显示，非定位调试需要可不输出
+  - /slam_poses geometry_msgs::PoseArray 原始SLAM位姿箭头显示，非定位调试需要可不输出
+  - /filter_markers visualization_msgs::Marker 融合后位置点显示，非定位调试需要可不输出
+  - /filter_poses geometry_msgs::PoseArray 融合后位姿箭头显示，非定位调试需要可不输出

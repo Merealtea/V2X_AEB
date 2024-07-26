@@ -1,0 +1,6 @@
+<!-- start gps -->
+<launch>
+  <node ns= "Inertial" pkg="oxford_gps_eth" type="gps_node" name="Inertial" output="screen">
+	<param name="ip_address" value="192.168.0.111:5001"/>   
+  </node>
+</launch>

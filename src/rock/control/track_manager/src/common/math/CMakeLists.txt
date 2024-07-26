@@ -1,0 +1,26 @@
+# find_package(glog REQUIRED NO_MODULE)
+# include(../common/FindGlog.cmake)
+find_package(osqp REQUIRED NO_MODULE)
+find_package(Eigen3 REQUIRED)
+include_directories(${CMAKE_SOURCE_DIR}
+${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+aux_source_directory(./discretized_points_smoothing DISCRETIZED_POINTS_SMOOTHING_SRCS_DIR)
+add_library(discretized_points_smoothing STATIC ${DISCRETIZED_POINTS_SMOOTHING_SRCS_DIR})
+target_link_libraries(discretized_points_smoothing glog osqp)
+
+aux_source_directory(./spline_smoothing SPLINE_POINTS_SMOOTHING_SRCS_DIR)
+add_library(spline_points_smoothing STATIC ${SPLINE_POINTS_SMOOTHING_SRCS_DIR})
+target_link_libraries(spline_points_smoothing glog osqp)
+target_include_directories(spline_points_smoothing PUBLIC ${EIGEN3_INCLUDE_DIR})
+
+add_library(reference_line_smoother STATIC reference_line_smoothing/discrete_points_reference_line_smoother.cc reference_line_smoothing/qp_spline_reference_line_smoother.cc)
+target_link_libraries(reference_line_smoother discrete_points_math
+discretized_trajectory
+discretized_points_smoothing
+spline_points_smoothing)
+
+add_library(discrete_points_math STATIC discrete_points_math.cc)
+target_link_libraries(discrete_points_math glog)
+target_include_directories(discrete_points_math PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

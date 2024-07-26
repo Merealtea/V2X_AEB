@@ -1,0 +1,20 @@
+vehicle_name: 'rock'
+
+goal_x_set: 7 # tracking distance
+
+######## point cloud matching
+# template_file_list: ['e100_new_1.ply','e100_new_2.ply']
+template_file_list: ['hycan_1.ply']
+behind_template_file_list: ['e100_behind2.ply']
+goodness_thres: 0.7
+vehicle_frame_id: 'base_link'
+map_frame_id: 'map'
+target_frame_id: 'target'
+
+########## tracking filter
+pose_error_estimation: 0.2
+heading_error_estimation: 0.5
+speed_error_estimation: 0.01
+yaw_rate_error_estimation: 0.06
+speed_drive_error_estimation: 0.5
+yaw_rate_drive_error_estimation: 0.1

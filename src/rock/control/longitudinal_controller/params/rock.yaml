@@ -1,0 +1,29 @@
+ts: 0.02
+debug_msg: true
+timeout_threshold: 1.0
+
+#distance controller:
+distance_kp: 0.7
+distance_ki: 0.1
+distance_kd: 0.0
+distance_i_max: 0.25
+distance_out_max: 5.0
+distance_i_err_range: 2.0
+
+#speed controller：
+speed_max: 40 #km/h
+speed_kp: 1.0
+speed_ki: 0.1
+speed_kd: 0.0
+speed_i_max: 0.25
+speed_out_max: 4.0
+speed_i_err_range: 2.0
+enable_speed_limit_curvature: true
+enable_acc_limit_curvature: true
+enable_speed_limit_steer: true
+enable_acc_limit_steer: true
+
+#stop state param:
+stop_ref_speed_threshold: 0.1
+stop_ref_acc_threshold: 0.1
+stop_acc_cmd: -1.5

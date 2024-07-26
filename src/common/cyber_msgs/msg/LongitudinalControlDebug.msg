@@ -1,0 +1,13 @@
+Header header
+float32 distance_err
+float32 speed_ref_feedback
+float32 speed_ref_feedforward
+float32 speed_ref
+float32 speed_feedback
+float32 speed_err
+float32 speed_err_limited
+float32 acc_cmd_feedforward
+float32 acc_cmd_feedback
+float32 acc_cmd
+float32 throttle_cmd
+float32 brake_cmd

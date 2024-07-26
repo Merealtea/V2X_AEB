@@ -1,0 +1,6 @@
+<!-- controller -->
+<launch>
+	<node pkg="steer_controller" type="pure_pursuit" name="pure_pursuit" output="screen">
+	    <rosparam file="$(find steer_controller)/params/rock.yaml" command="load" />
+	</node>
+</launch>

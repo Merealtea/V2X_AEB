@@ -1,0 +1,3 @@
+<launch>
+	<node pkg="lkusbcan" name="lcan_read_write" type="lcan_read_write"/>
+</launch>

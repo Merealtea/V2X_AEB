@@ -1,0 +1,18 @@
+<!-- Starts up everything needed to simulate velocity control -->
+<launch>
+	
+<!--	start speed control-->
+  	<node pkg="speed_controller" type="speed_controller" name="speed_controller" output="screen">
+		<param name="speed_kp" value="200.0"/>
+		<param name="speed_ki" value="3.0"/>
+		<param name="speed_kd" value="0.0"/>
+		<param name="speed_kv" value="25.0"/>
+		<param name="speed_ka" value="400.0"/>
+		<param name="speed_max" value="40.0"/>
+		<param name="speed_min" value="5.0"/>
+		<param name="emergency_slow_brake" value="65"/>
+		<param name="emergency_stop_brake" value="80"/>
+    </node>
+    
+</launch>
+

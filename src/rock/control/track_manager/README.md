@@ -1,0 +1,15 @@
+- ### 跟车路径生成
+- #### 订阅topic
+  - /tracking/front_vehicle/global_pose    geometry_msgs::Pose2D  前车在固定坐标系下的位姿
+  - /tracking/front_vehicle/speed          std_msgs::Float64      前车估计速度
+  - /e100_can/speed_feedback               e100_msgs::VehicleSpeedFeedback  自车速度反馈
+  - /e100_can/steer_feedback               e100_msgs::VehicleSteerFeedback  方向盘反馈
+  - /tracking/front_vehicle/is_lost        std_msgs::Bool         是否丢失前车目标
+  - /xboxone/rematch  std_msgs::Int8  触发重匹配
+- #### 发布topic
+  - /control/speed_target                  std_msgs::Float64                上层的控制期望速度 m/s
+  - /e100_can/steer_command                e100_msgs::steercmd              方向盘指令
+  - /control/ego_track                     geometry_msgs::PoseArray         显示自车路径
+  - /control/front_track                   geometry_msgs::PoseArray         显示前车路径
+  - /control/target_track                  visualization_msgs::Marker       显示目标路径
+  - /control/ego_pose                      geometry_msgs::Pose2D            自车在固定坐标系下的位置

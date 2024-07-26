@@ -1,0 +1,3 @@
+[submodule "src/tracking/components_visual_tracking/src/pytracking"]
+	path = src/tracking/components_visual_tracking/src/pytracking
+	url = https://github.com/wu-hrww/pytracking.git

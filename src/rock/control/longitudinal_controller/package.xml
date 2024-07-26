@@ -1,0 +1,19 @@
+<package format="2">
+  <name>longitudinal_controller</name>
+  <version>0.0.1</version>
+  <description> basic longitudinal controller for CyberC3
+  </description>
+  <author>Chen Hongxin</author>
+  <maintainer email="anglelochen@live.cn">Chen Hongxin</maintainer>
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>message_runtime</depend>
+  <depend>dynamic_reconfigure</depend>
+  <depend>message_generation</depend>
+  <depend>roscpp</depend>
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>cyber_msgs</depend>
+</package>

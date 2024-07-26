@@ -1,0 +1,23 @@
+2.06
+1.增加 USBCAN 蓝色  USBCAN-C  红色外壳   USBCAN-E  MPCIe支持
+2.所有平台版本 用pthread_cond_timedwait 替换 sem_timedwait ，解决 sem_timedwait 在部分32位系统下失效的问题
+
+2.0.5
+1.增加支持LCminiPcie-43xS（SylixOS版本）
+2.增加支持LCminiPcie-43xW（支持CAN唤醒功能）
+3.修正设置验收滤波器参数大小端问题（ver2.05直接填计算工具算出的值，之前版本需要将计算值按字节交换高低顺序）
+4.修改 CAN_ChannelReceive CAN_GetErrorInfo 为线程安全
+
+2.0.4
+1.在linux java调用环境下,用 sem_trywait 替换 sem_timedwait ，解决 sem_timedwait 失效的问题
+
+2.0.3
+1.修正在系统USBFS操作失败时不能打开CAN卡的问题
+2.增加日志功能，在环境变量中添加 LIBCANCMD_DEBUG=x  启用日志 (x=1,查看错误信息;x=2,查看错误+警告;x=3,查看全部),日志通过stderr输出
+
+2.0.2
+增加 VID: 0x0716, 0x0368, 0x8357 ；PID: 0x2300 类型设备支持
+
+2.0.1
+
+修正32bit lib在ununtu12.04 下缺少引用库的问题

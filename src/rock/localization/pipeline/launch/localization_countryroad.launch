@@ -1,0 +1,10 @@
+<launch>
+    <node pkg="localization_pipeline" type="localization" name="localization" output="screen">
+      <param name="command_no_gps" type="bool" value = "false"/>
+      <param name="localization_debug" type="bool" value = "true"/>
+      <param name="speed_err" type="double" value = "0.001"/>
+      <param name="imu_err" type="double" value = "0.001"/>
+      <param name="steer_ratio" type="double" value = "16.5"/>
+      <param name="vehicle_frame_id" type="string" value = "base_link"/>
+    </node>
+</launch>

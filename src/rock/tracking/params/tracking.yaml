@@ -1,0 +1,90 @@
+vehicle_name: "cyber_rock"
+
+is_night: false
+
+method: "our" # our, simple, combine
+
+# camera parameters
+cam_type: "fisheye"
+cam_frame_width: 1920
+cam_frame_height: 1080
+# camera intrinsic parameters
+cam_f_x: 475.1244
+cam_f_y: 474.4342
+cam_c_x: 950.5635
+cam_c_y: 540.1673
+cam_k_1: 0.06327
+cam_k_2: -0.009024
+cam_k_3: -0.002554
+cam_k_4: 0.001430
+# camera external parameters
+cam_x: 3.55
+cam_y: 0.0
+cam_z: 0.0
+cam_yaw: 0.04
+cam_pitch: 0.0
+cam_roll: 0.0
+
+# target geometry parameters
+# target_name: "e100"
+# target_length: 2.488
+# target_width: 1.506
+# target_height: 1.670
+# target_wheelbase: 1.600
+# target_left_rearlight_x: -0.15
+# target_left_rearlight_y: 0.60
+# target_right_rearlight_x: -0.15
+# target_right_rearlight_y: -0.60
+# target_rear_x: -0.15
+# target_rear_y: 0.0
+
+target_name: "hycan"
+target_length: 4.602
+target_width: 1.9
+target_height: 1.670
+target_wheelbase: 2.75
+target_left_rearlight_x: -0.875
+target_left_rearlight_y: 0.80
+target_right_rearlight_x: -0.875
+target_right_rearlight_y: -0.8
+target_rear_x: -0.875
+target_rear_y: 0.0
+
+# part_based tracker parameters
+filter_num_particles: 200
+# filter_stop_update_t: 1666262989.874301
+filter_stop_update_t: 99999999999.0
+
+# large prediction error
+filter_model_std_xy: 0.05 # 0.1
+filter_model_std_theta: 0.06 # 0.003 / 0.3
+
+# medium measurement error
+filter_measurement_std_xy: 0.01
+filter_measurement_std_theta: 0.03
+filter_measurement_std_v: 0.01
+filter_measurement_std_omega: 0.03
+# filter_measurement_std_left_rearlight: 0.03
+# filter_measurement_std_right_rearlight: 0.03
+# filter_measurement_std_rear: 0.5
+# filter_measurement_std_rear_center: 0.2
+
+# re-init
+
+# 剔除不合理的 measurement
+# 剔除过多则动态初始化
+
+# vehicle detection
+vh_box_thresh: 0.2
+
+# radar external parameters
+radar_x: 3.55
+radar_y: -0.01
+radar_z: 0.0
+radar_yaw: -0.0524
+radar_pitch: 0.0
+radar_roll: 0.0
+
+delay_compensation: true
+use_vh_visual_tracking: true
+mannual_init_vehicle: false

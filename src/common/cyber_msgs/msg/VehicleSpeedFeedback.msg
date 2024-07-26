@@ -1,0 +1,12 @@
+Header header
+bool is_updated
+bool drive_mode
+int16 drive_shift
+int16 brake_enable
+int16 key_state
+int16 brakePedal_position
+int16 acc
+int16 brake_re
+int16 motor_fault
+int16 speed_cmps
+int16 speed_kmph

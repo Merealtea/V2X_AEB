@@ -1,0 +1,2 @@
+1.拷贝80-laike-acusb.rules 到 /etc/udev/rules.d/
+2.重启系统

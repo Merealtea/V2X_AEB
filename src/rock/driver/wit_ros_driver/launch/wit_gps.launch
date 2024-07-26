@@ -1,0 +1,9 @@
+<!--维特智能 gps+imu 组合惯导 ros 驱动-->
+<launch>
+
+    <node pkg="wit_ros_driver" type="wit_modbus_gps_ros.py" name="wit_gps_driver" output="screen">
+        <param name="port"               type = "str"    value="/dev/ttyUSB0"/>
+        <param name="baud"               type = "int"    value="115200"/>
+    </node>
+
+</launch>

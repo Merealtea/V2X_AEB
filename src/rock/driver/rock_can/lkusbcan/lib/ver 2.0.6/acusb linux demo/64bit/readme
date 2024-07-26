@@ -1,0 +1,9 @@
+1.例程使用ACUSB-131作为测试工具，在运行例程前需要先将ACUSB-131的CAN1的RES+、RES-短接。
+2.例程使用1Mbps波特率，完成通道的数据互发64×10000
+3.linux系统需要安装usb文件系统
+4.安装 libudev-dev sudo apt-get install  libudev-dev
+5.运行步骤：
+sudo make install; 
+sudo make ;
+sudo ./testLikeCan;
+

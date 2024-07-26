@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="ui" type="lost_logger.py" name="lost_logger" output="screen"/>
+</launch>

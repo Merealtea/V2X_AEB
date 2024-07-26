@@ -1,0 +1,14 @@
+<!-- Rear_feedback controller -->
+<launch>
+<!--	start rear_feedback-->
+	<node pkg="steer_controller" type="rear_feedback" name="rear_feedback" output="screen">
+	    <param name="ref_distance" value="2.5"/>
+	    <param name="k_angle_" value="1.0"/>
+	    <param name="k_error_" value="2.0"/>
+	    <param name="Kp_error_" value="0.2"/>
+	    <param name="Ki_error_" value="0.2"/>
+	    <param name="filter_param_" value="0.6"/>
+	    <param name="Kp_wheel_" value="1200.0"/>
+	</node>
+	
+</launch>

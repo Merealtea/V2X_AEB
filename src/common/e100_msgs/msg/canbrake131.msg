@@ -1,0 +1,10 @@
+Header header
+bool vehicleDriveModeReqV
+bool vehicleDriveModeReq
+bool parkBrakeReqV
+int8 parkBrakeReq
+bool brakePressureTargetV
+int8 brakePressureTarget
+bool iduFaultShow
+int8 iduCounter
+int8 dataCheckSums
