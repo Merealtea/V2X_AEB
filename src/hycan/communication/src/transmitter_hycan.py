@@ -15,6 +15,7 @@ from sensor_msgs.msg import Imu
 import tf
 from tf.transformations import *
 import socket, sys, threading, struct
+import json
 
 SIZE = 1024
 FREQ = 50
@@ -26,6 +27,7 @@ class HycanTransmitter:
         # rospy.Subscriber('/wit/imu', Imu, self._imu_callback)
         # rospy.Subscriber('/wit/gps_fix', NavSatFix, self._gps_callback)
         rospy.Subscriber('hycan_processed_images', FourImages, self._transimit_images)
+
         # self._curr_speed = 0.0
         # self._curr_steer = 0.0
         # self._curr_imu_angular_velo = Vector3()
@@ -38,7 +40,6 @@ class HycanTransmitter:
 
         # t_check = threading.Thread(target=self._valid_check)
         # t_check.start()
-
         try:
             self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self._socket.bind((host, port))
@@ -106,33 +107,35 @@ class HycanTransmitter:
                     and addr not in addr_list):
                     rospy.loginfo('V2V request from {}'.format(addr))
                     self._connected = True
-                    t = threading.Thread(target=self._trans, args=(addr))
-                    t.start()
                     addr_list.append(addr)
             except Exception as e:
                 rospy.logwarn(e)
 
-    def _trans(self,host,port):
-        rospy.loginfo('Connected to {}'.format((host,port)))
-        msg_struct = struct.Struct('!2i1?6f2d')
-        while not rospy.is_shutdown():
-            try:
-                msg = msg_struct.pack(rospy.Time.now().secs,\
-                    rospy.Time.now().nsecs,\
-                    self._is_updated,\
-                    self._curr_speed,\
-                    self._curr_steer,\
-                    self._curr_imu_angular_velo.z,\
-                    self._curr_imu_accel.x,\
-                    self._curr_imu_accel.y,\
-                    self._curr_yaw,\
-                    self._curr_gps_fix.latitude,\
-                    self._curr_gps_fix.longitude)
-                self._socket.sendto(msg,(host,port))
-            except Exception as e:
-                rospy.logwarn(e)
-            rospy.sleep(1. / FREQ)
+    # def _trans(self,host,port):
+    #     rospy.loginfo('Connected to {}'.format((host,port)))
+    #     msg_struct = struct.Struct('!2i1?6f2d')
+    #     while not rospy.is_shutdown():
+    #         try:
+    #             msg = msg_struct.pack(rospy.Time.now().secs,\
+    #                 rospy.Time.now().nsecs,\
+    #                 self._is_updated,\
+    #                 self._curr_speed,\
+    #                 self._curr_steer,\
+    #                 self._curr_imu_angular_velo.z,\
+    #                 self._curr_imu_accel.x,\
+    #                 self._curr_imu_accel.y,\
+    #                 self._curr_yaw,\
+    #                 self._curr_gps_fix.latitude,\
+    #                 self._curr_gps_fix.longitude)
+    #             self._socket.sendto(msg,(host,port))
+    #         except Exception as e:
+    #             rospy.logwarn(e)
+    #         rospy.sleep(1. / FREQ)
 
 if __name__ ==  '__main__':
-    trans = HycanTransmitter('',8900)
+    with open('./common/config/comm.json', 'r') as f:
+        net_config = json.load(f)
+    target_host = net_config['CenterServer']['ip']
+    target_port = net_config['CenterServer']['port']
+    trans = HycanTransmitter(target_host, target_port)
     trans.transmit()

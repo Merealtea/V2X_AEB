@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="center_comm" type="Reciever.py" name="Center_Reciever" output="screen"/>
+
+</launch>

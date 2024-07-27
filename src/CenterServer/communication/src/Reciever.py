@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- encoding: utf-8 -*-
 '''
 # AUTHOR: Haoran Wu, Hongxin Chen
@@ -12,18 +12,15 @@
 import socket, sys, struct
 import rospy
 import numpy as np
-from cyber_msgs.msg import V2VPacket
+# from cyber_msgs.msg import V2VPacket
 from PIL import Image
 import io
+import json
 
 SIZE = 1024
 
 local_host = ''
 local_port = 8901
-
-#remote_host = '10.42.0.1'
-remote_host = '192.168.10.100'
-remote_port = 8900
 
 class Reciever:
     def __init__(self, remote_host, remote_port):
@@ -33,6 +30,7 @@ class Reciever:
             self.client = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
             self.client.bind((local_host,local_port))
             self.client.settimeout(10)
+            rospy.loginfo("Socket bind for center server success!")
         except:
             rospy.logerr('Failed to create socket.')
             sys.exit()
@@ -74,5 +72,9 @@ class Reciever:
                 pass
 
 if __name__ == '__main__':
+    with open('/mnt/pool1/cyberc3_platooning-main/src/common/config/comm.json', 'r') as f:
+        config = json.load(f)
+        remote_host = config['Hycan']['ip']
+        remote_port = config['Hycan']['port']
     encoder = Reciever(remote_host, remote_port)
     encoder.receive()
