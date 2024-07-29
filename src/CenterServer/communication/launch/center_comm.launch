@@ -1,4 +1,4 @@
 <launch>
-    <node pkg="center_comm" type="Reciever.py" name="Center_Reciever" output="screen"/>
+    <node pkg="center_comm" type="socket_server.py" name="center_server" output="screen"/>
 
 </launch>

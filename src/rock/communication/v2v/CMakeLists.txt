@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(v2v)
+project(rock_comm)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   rospy
   std_msgs
+  hycan_msgs
   cyber_msgs
 )
 
@@ -162,7 +163,7 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can chsoose the destination
 catkin_install_python(PROGRAMS
-  src/decoder.py
+  src/socket_rock_client.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

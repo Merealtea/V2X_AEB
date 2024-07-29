@@ -1,4 +1,3 @@
 <launch>
-    <node pkg="hycan_comm" type="transmitter_hycan.py" name="hycan_trans" output="screen"/>
-
+    <node pkg="hycan_comm" type="socket_hycan_client.py" name="hycan_client" output="screen"/>
 </launch>
