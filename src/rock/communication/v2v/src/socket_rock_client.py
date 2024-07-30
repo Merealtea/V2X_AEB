@@ -17,6 +17,8 @@ from tf.transformations import *
 import socket, sys, threading, struct
 import json
 import time
+import numpy as np
+import cv2
 
 SIZE = 1024
 FREQ = 50
@@ -96,26 +98,35 @@ class SocketClient:
                 serialized_data = b''
                 # 对于每个图像，序列化并发送
                 width, height = img_msg.image_front.width, img_msg.image_front.height
+                concat_image = np.zeros((height, width*4, 3), dtype=np.uint8)
                 # 打包发送数据
                 timestamp = time.time()  # 获取当前时间戳
-                header = struct.pack('dIIi', timestamp, width, height, 4)
-                rospy.loginfo(f"Header length: {len(header)}")
                 rospy.loginfo(f"image_front shape: {width}x{height} timestamp: {timestamp}")
-                self._socket.sendall(header)
-                for image in [img_msg.image_front,
+                for i, image in enumerate([img_msg.image_front,
                                 img_msg.image_back, 
                                     img_msg.image_left, 
-                                        img_msg.image_right]:
+                                        img_msg.image_right]):
                     # 将图像数据转换为二进制格式
-                    data = image.data
+                    # serialized_data += image.data
+                    # 读取图像数据
+                    data = np.frombuffer(image.data, dtype=np.uint8).reshape((height, width, 3))
+                    # 将图像数据拼接到一起
+                    concat_image[:, width*i:width*(i+1)] = data
                     # 循环发送数据
-                    rospy.loginfo("Sending image data with length: {}".format(len(data)))
-                    self._socket.sendall(data)
+                    # rospy.loginfo("Sending image data with length: {}".format(len(data)))
+                    # self._socket.sendall(data)
                 
                 # rospy.loginfo("Data length: {}".format(len(serialized_data)))
                 # 循环发送数据
-                
-                self._socket.sendall(serialized_data)
+                st = time.time()
+                # encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 20]        # 设置JPEG图像的质量参数为20,参数可以自定义调整
+                _, encimg = cv2.imencode('.jpg', concat_image)
+                compressed_data = encimg.tobytes()# zlib.compress(serialized_data)
+                rospy.loginfo(f"Compressed time: {time.time()-st}")
+                rospy.loginfo(f"Compressed data length: {len(compressed_data)}")
+                header = struct.pack('dIIi', timestamp, width, height, len(compressed_data))
+                compressed_data = header + compressed_data
+                self._socket.sendall(compressed_data)
                 rospy.loginfo("Sending image data...")
             else:
                 rospy.logwarn('Not connected to any client!')
