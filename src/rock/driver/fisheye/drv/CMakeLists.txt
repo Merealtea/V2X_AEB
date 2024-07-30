@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(fisheye_drv)
+project(rock_driver)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -8,12 +8,14 @@ add_compile_options(-std=c++11)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  image_transport
   nodelet
   roscpp
   sensor_msgs
   std_msgs
   hycan_msgs
+  cv_bridge
+  image_transport
+  message_filters
 )
 
 find_package(OpenCV 4 REQUIRED)
@@ -46,7 +48,7 @@ find_package(OpenCV 4 REQUIRED)
 ##     find_package(catkin REQUIRED COMPONENTS ...)
 ##   * add "message_runtime" and every package in MSG_DEP_SET to
 ##     catkin_package(CATKIN_DEPENDS ...)
-##   * uncomment the add_*_files sections below as needed
+##   * uncomment the add_*_files sectimage_processorions below as needed
 ##     and list every .msg/.srv/.action file to be processed
 ##   * uncomment the generate_messages entry below
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)

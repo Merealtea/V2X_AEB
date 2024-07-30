@@ -52,6 +52,7 @@ class SocketClient:
                 self._socket.bind((local_host, local_port))
                 self._socket.setblocking(False)
                 self._socket.settimeout(10)
+                rospy.loginfo(f"Connecting to {(remote_host, remote_port)}...")
                 self._socket.connect((remote_host, remote_port))
 
                 rospy.loginfo(f"Connection from {(remote_host, remote_port)} has been established.")

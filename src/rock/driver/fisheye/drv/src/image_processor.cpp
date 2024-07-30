@@ -27,7 +27,7 @@ public:
         sync_->registerCallback(boost::bind(&ImageProcessor::imageCallback, this, _1, _2, _3, _4));
 
         // 发布自定义消息
-        pub_ = nh_.advertise<image_processor::FourImages>("rock_processed_images", 1);
+        pub_ = nh_.advertise<hycan_msgs::FourImages>("rock_processed_images", 1);
     }
 
     void imageCallback(const sensor_msgs::CompressedImageConstPtr& msg1, // front
@@ -57,11 +57,11 @@ public:
         }
 
         // 发布自定义消息
-        image_processor::FourImages out_image_msg;
-        out_image_msg.image1 = out_msgs[0];
-        out_image_msg.image2 = out_msgs[1];
-        out_image_msg.image3 = out_msgs[2];
-        out_image_msg.image4 = out_msgs[3];
+        hycan_msgs::FourImages out_image_msg;
+        out_image_msg.image_front = out_msgs[0];
+        out_image_msg.image_back = out_msgs[1];
+        out_image_msg.image_left = out_msgs[2];
+        out_image_msg.image_right = out_msgs[3];
         pub_.publish(out_image_msg);
     }
 
