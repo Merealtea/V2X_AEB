@@ -1,0 +1,1 @@
+cd ../.. && catkin build hycan_msgs hycan_driver hycan_comm

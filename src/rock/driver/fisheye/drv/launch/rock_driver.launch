@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="rock_driver" type="img_proc_node" name="rock_image" output="screen"/>
+ 
+</launch>

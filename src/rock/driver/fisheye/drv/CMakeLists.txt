@@ -8,8 +8,8 @@ add_compile_options(-std=c++11)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  nodelet
   roscpp
+  geometry_msgs
   sensor_msgs
   std_msgs
   hycan_msgs
@@ -18,7 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_filters
 )
 
-find_package(OpenCV 4 REQUIRED)
+# find_package(OpenCV 3 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -125,12 +125,9 @@ catkin_package(
 include_directories(
   "include"
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
-## Declare a C++ library
-add_library(drv_nodelet
-  src/drv_nodelet.cpp
-)
 
 add_executable(img_proc_node
   src/image_processor.cpp
@@ -158,15 +155,6 @@ target_link_libraries(img_proc_node
 ## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
 # set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
 
-## Add cmake target dependencies of the executable
-## same as for the library above
-add_dependencies(drv_nodelet ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Specify libraries to link a library or executable target against
-target_link_libraries(drv_nodelet
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
 
 #############
 ## Install ##
