@@ -20,7 +20,7 @@ import threading
 import time
 import cv2
 from hycan_msgs.msg import FourImages
-# import rosbag
+import rosbag
 from cv_bridge import CvBridge
 
 class SocketServer:
@@ -29,7 +29,7 @@ class SocketServer:
         self.max_client = 5
         self.connected_client = {}
         self.addr_to_vehicle = addr_to_vehicle
-        # self.new_bag = rosbag.Bag(f"./multi_vehicle.bag", 'w')
+        self.new_bag = rosbag.Bag('/home/pi/V2X_AEB/src/CenterServer/communication/center.bag', 'w')
         # self._leader_pub = rospy.Publisher('/V2V/leader', V2VPacket, queue_size=1)
         try:
             # we will first regard it as a receiver
@@ -61,6 +61,7 @@ class SocketServer:
                 continue
 
     def __del__(self):
+        self.new_bag.close()
         if hasattr(self, 'server'):
             self.server.close()
 
@@ -79,6 +80,7 @@ class SocketServer:
                 # 读取图像数据
                 header = client.recv(20)
                 if not header and max_retry > 0:
+                    max_retry -= 1
                     continue
                 if max_retry == 0:
                     rospy.logwarn(f"Connection from {addr} has been lost.")
@@ -97,16 +99,21 @@ class SocketServer:
                 rospy.loginfo(f"Decompress time: {time.time()-st}")
                 rospy.loginfo(f"Receive image length: {len(images)}")
                 images = np.reshape(images, (-1,height, width, 3))
-                hycan_msg = FourImages()
-                # hycan_msg.image_front = bridge.cv2_to_imgmsg(images[0], encoding='bgr8')
-                # hycan_msg.image_back = bridge.cv2_to_imgmsg(images[1], encoding='bgr8')
-                # hycan_msg.image_left = bridge.cv2_to_imgmsg(images[2], encoding='bgr8')
-                # hycan_msg.image_right = bridge.cv2_to_imgmsg(images[3], encoding='bgr8')
-                secs = int(timestamp)  # 秒数部分
-                nsecs = int((timestamp - secs) * 1e9)  # 将小数部分转换为纳秒
-                rospy_time = rospy.Time(secs, nsecs)  # 创建 rospy.Time 对象
-                hycan_msg.header.stamp = rospy_time
-                # self.new_bag.write(topic, hycan_msg)
+                images_msg = FourImages()
+                images_msg.image_front.data = images[0].tobytes()
+                images_msg.image_back.data = images[1].tobytes()
+                images_msg.image_left.data = images[2].tobytes()
+                images_msg.image_right.data = images[3].tobytes()
+                # images_msg.image_front = bridge.cv2_to_compressed_imgmsg(images[0], dst_format='jpeg')
+                # images_msg.image_back = bridge.cv2_to_compressed_imgmsg(images[1], dst_format='jpeg')
+                # images_msg.image_left = bridge.cv2_to_compressed_imgmsg(images[2], dst_format='jpeg')
+                # images_msg.image_right = bridge.cv2_to_compressed_imgmsg(images[3], dst_format='jpeg')
+                # secs = int(timestamp)  # 秒数部分
+                # nsecs = int((timestamp - secs) * 1e9)  # 将小数部分转换为纳秒
+                # rospy_time = rospy.Time(secs, nsecs)  # 创建 rospy.Time 对象
+                # images_msg.image_front.header.stamp = rospy_time
+                # images_msg.header.stamp = rospy.Time.now()
+                # self.new_bag.write(topic, images_msg)
 
             except Exception as e:
                 self.delete_client(addr)
@@ -119,7 +126,7 @@ class SocketServer:
             del self.connected_client[addr]
         if len(self.connected_client) == 0:
             rospy.logwarn("No client connected.")
-            # self.new_bag.close()
+            self.new_bag.close()
 
 if __name__ == '__main__':
     with open('/home/pi/V2X_AEB/src/common/config/comm.json', 'r') as f:
