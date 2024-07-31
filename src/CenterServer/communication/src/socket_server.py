@@ -29,7 +29,7 @@ class SocketServer:
         self.max_client = 5
         self.connected_client = {}
         self.addr_to_vehicle = addr_to_vehicle
-     
+
         try:
             # we will first regard it as a receiver
             self.server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -64,6 +64,9 @@ class SocketServer:
                 continue
 
     def __del__(self):
+        for addr in self.connected_client:
+            self.connected_client[addr].close()
+
         if hasattr(self, 'server'):
             self.server.close()
 
@@ -71,10 +74,10 @@ class SocketServer:
             self.new_bag.close()
 
     def unpack_data(self, packed_data):
-        fmt = "diiifffffffffffddd"
+        fmt = "diiifffffffddd"
         unpacked_data = struct.unpack(fmt, packed_data)
         timestamp, width, height, count, ox, oy, oz, ow, avx, avy, avz, lat, lon, alt = unpacked_data
-        
+
         # 重建IMU和GPS消息
         imu_msg = Imu()
         imu_msg.orientation.x = ox
@@ -84,12 +87,12 @@ class SocketServer:
         imu_msg.angular_velocity.x = avx
         imu_msg.angular_velocity.y = avy
         imu_msg.angular_velocity.z = avz
-        
+
         gps_msg = NavSatFix()
         gps_msg.latitude = lat
         gps_msg.longitude = lon
         gps_msg.altitude = alt
-        
+
         return timestamp, width, height, count, imu_msg, gps_msg
 
 
@@ -105,7 +108,7 @@ class SocketServer:
         while not rospy.is_shutdown():
             try:
                 # 读取图像数据
-                header = client.recv(80)
+                header = client.recv(72)
                 if not header and max_retry > 0:
                     max_retry -= 1
                     continue
@@ -113,7 +116,7 @@ class SocketServer:
                     rospy.logwarn(f"Connection from {addr} has been lost.")
                     self.delete_client(addr)
                     return
-                
+
                 timestamp, width, height, count, imu, gps = self.unpack_data(header)
 
                 rospy.loginfo(f"Receive image data from {vehicle}: {timestamp}, {width}, {height}, {count}")
@@ -128,12 +131,12 @@ class SocketServer:
                 rospy.loginfo(f"Time delay is {time.time()-timestamp}")
 
                 # Package the images and imu data into a ROS message
-                images = np.reshape(images, (-1,height, width, 3))
+                images = np.reshape(images, (height, -1, 3))
                 images_msg = FourImages()
-                images_msg.image_front.data = images[0].tobytes()
-                images_msg.image_back.data = images[1].tobytes()
-                images_msg.image_left.data = images[2].tobytes()
-                images_msg.image_right.data = images[3].tobytes()
+                images_msg.image_front.data = images[:, :width].tobytes()
+                images_msg.image_back.data = images[:, width:2*width].tobytes()
+                images_msg.image_left.data = images[:, 2*width:3*width].tobytes()
+                images_msg.image_right.data = images[:, 3*width:].tobytes()
                 images_msg.imu = imu
                 images_msg.gps = gps
 
@@ -155,7 +158,7 @@ class SocketServer:
         if addr in self.connected_client:
             self.connected_client[addr].close()
             del self.connected_client[addr]
-            
+
 if __name__ == '__main__':
     # 创建rospkg对象
     rospack = rospkg.RosPack()
@@ -178,8 +181,7 @@ if __name__ == '__main__':
         for key in config:
             addr = config[key]['ip']
             addr_to_vehicle[addr] = key
-    
+
     server = SocketServer(local_host, local_port, addr_to_vehicle, bag_path)
     server.wait_for_connection()
     rospy.spin()
-    server.delete_client()
