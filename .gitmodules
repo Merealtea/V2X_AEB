@@ -1,3 +1,6 @@
 [submodule "src/tracking/components_visual_tracking/src/pytracking"]
 	path = src/tracking/components_visual_tracking/src/pytracking
 	url = https://github.com/wu-hrww/pytracking.git
+[submodule "src/common/Mono3d"]
+	path = src/common/Mono3d
+	url = https://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@github.com/Merealtea/Mono3d.git
