@@ -20,7 +20,7 @@ from time import time
 class Detector:
     def __init__(self, ckpt_path):
         # Get the vehicle name from ROS parameter server
-        rospy.init_node('hycan_detector', anonymous=True)
+        rospy.init_node('rock_detector', anonymous=True)
         self.vehicle = rospy.get_param('~vehicle')
         
         # load the detector
@@ -36,7 +36,7 @@ class Detector:
         self.width = 640
 
         # initialze the subscriber
-        rospy.Subscriber('hycan_processed_images'.format(self.vehicle), FourImages, self.detect)
+        rospy.Subscriber('rock_processed_images'.format(self.vehicle), FourImages, self.detect)
 
     def to_tensor(self, img_msg, device):
         return torch.FloatTensor(
@@ -76,6 +76,7 @@ class Detector:
         result = self.detector(images, img_metas, return_loss=False)[0]
         bbox = result['boxes_3d'].tensor.cpu().numpy()[:, :7]
         rospy.loginfo("Inference time : {}".format(time() - st))
+
         # localization and time delay
         localization = (msg.localization.utm_x, msg.localization.utm_y,msg.localization.heading)
         rospy.loginfo("Localization: {}".format(localization))
@@ -91,10 +92,10 @@ if __name__ == '__main__':
     rospack = rospkg.RosPack()
 
     # 获取当前包的路径
-    package_path = rospack.get_path('hycan_detection')
+    package_path = rospack.get_path('rock_detection')
 
     # 获取包的上一级目录
-    ws_path = package_path.split('hycan')[0]
+    ws_path = package_path.split('rock')[0]
 
     model_config_path = ws_path + 'common/Mono3d/configs/models'
     Detector(model_config_path)

@@ -78,7 +78,7 @@ class Detector:
         bbox = result['boxes_3d'].tensor.cpu().numpy()[:, :7]
 
         # localization and time delay
-        localization = msg.gps
+        localization = (msg.localization.utm_x, msg.localization.utm_y,msg.localization.heading)
         rospy.loginfo("Localization: {}".format(localization))
         recv_timestamp = msg.header.stamp
         send_timestamp = msg.image_front.header.stamp

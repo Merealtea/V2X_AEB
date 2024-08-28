@@ -1,0 +1,9 @@
+<launch>
+  <node pkg="rock_detection" type="detector.py" name="rock_detector" output="screen">
+    <param name="vehicle" value="rock" />
+  </node>
+
+  <!-- <node pkg="detection" type="detector.py" name="rock_detector" output="screen">
+    <param name="vehicle" value="rock" />
+  </node> -->
+</launch>

@@ -32,7 +32,7 @@ def merge_callback(hycan_msg : FourImages,
     # hycan_msg : the timestamp of the hycan sending msg is in header
     # localisation_msg : the timestamp of the rock sending msg is in header
     global distance, time_delay
-    hycan_gps = hycan_msg.gps
+    hycan_gps = hycan_(msg.localization.utm_x, msg.localization.utm_y,msg.localization.heading)
     rock_gps = localisation_msg
 
     hycan_utm = transformer.transform(hycan_gps.latitude, hycan_gps.longitude)
