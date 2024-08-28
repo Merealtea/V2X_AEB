@@ -79,7 +79,7 @@ public:
         out_image_msg.image_back.height = original_height;
         out_image_msg.image_back.width = original_width;
 
-        out_image_msg.localzation = *msg5;
+        out_image_msg.localization = *msg5;
         pub_.publish(out_image_msg);
 
         // 打印消息

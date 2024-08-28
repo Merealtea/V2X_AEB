@@ -53,9 +53,9 @@ class SocketServer:
     def get_fmt_length(self):
         self.fmt_length = 0
         for ch in self.fmt:
-            if ch in ['d', "D"]:
+            if ch in ['d', "D", 'I']:
                 self.fmt_length += 8
-            elif ch in ['i', 'f', 'I', 'F']:
+            elif ch in ['i', 'f', 'F']:
                 self.fmt_length += 4
 
     def wait_for_connection(self):
@@ -76,7 +76,7 @@ class SocketServer:
     def __del__(self):
         if hasattr(self, 'new_bag'):
             self.new_bag.close()
-            
+
         for addr in self.connected_client:
             self.connected_client[addr].close()
 
@@ -125,9 +125,9 @@ class SocketServer:
                 images_msg.image_back.data = images[:, width:2*width].tobytes()
                 images_msg.image_left.data = images[:, 2*width:3*width].tobytes()
                 images_msg.image_right.data = images[:, 3*width:].tobytes()
-                images_msg.x = vhx
-                images_msg.y = vhy
-                images_msg.yaw = yaw
+                images_msg.localization.utm_x = vhx
+                images_msg.localization.utm_y = vhy
+                images_msg.localization.heading = yaw
                 secs = int(timestamp)  # 秒数部分
                 nsecs = int((timestamp - secs) * 1e9)  # 将小数部分转换为纳秒
                 rospy_time = rospy.Time(secs, nsecs)  # 创建 rospy.Time 对象
@@ -137,7 +137,7 @@ class SocketServer:
                 images_msg.image_front.height = height
                 images_msg.image_front.width = width
                 images_msg.image_back.height = original_height
-                images_msg.image.back.width = original_width
+                images_msg.image_back.width = original_width
                 
                 # 记录接收到消息的时间
                 images_msg.header.stamp = rospy.Time.now()

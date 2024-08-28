@@ -1,7 +1,7 @@
 Header header 
 
 # Position(utm) and yaw
-Localization localzation
+Localization localization
 
 # Images
 sensor_msgs/Image image_front

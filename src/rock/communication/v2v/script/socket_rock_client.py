@@ -96,7 +96,7 @@ class SocketClient:
                 rospy.loginfo("Compressed data length: {}".format(len(compressed_data)))
                 
                 # 将数据打包
-                header = self.pack_data(timestamp, width, height, original_width, original_height, len(compressed_data), img_msg.x, img_msg.y, img_msg.yaw)
+                header = self.pack_data(timestamp, width, height, original_width, original_height, len(compressed_data), img_msg.localization.utm_x, img_msg.localization.utm_y, img_msg.localization.heading)
                 compressed_data = header + compressed_data
                 self._socket.sendall(compressed_data)
                 rospy.loginfo("Sending image data...")
