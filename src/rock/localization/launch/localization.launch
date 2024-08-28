@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="rock_localization" type="localization" name="rock_localization" output="screen"></node>
+</launch>

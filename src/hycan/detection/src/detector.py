@@ -5,7 +5,6 @@ import rospy
 import numpy as np
 import yaml
 from hycan_msgs.msg import FourImages
-from sensor_msgs.msg import Imu, NavSatFix
 import sys
 import os
 # Add the path to the 'src' directory (parent of common and centerserver)
@@ -21,7 +20,7 @@ from time import time
 class Detector:
     def __init__(self, ckpt_path):
         # Get the vehicle name from ROS parameter server
-        rospy.init_node('detector', anonymous=True)
+        rospy.init_node('hycan_detector', anonymous=True)
         self.vehicle = rospy.get_param('~vehicle')
         
         # load the detector
@@ -37,7 +36,7 @@ class Detector:
         self.width = 640
 
         # initialze the subscriber
-        rospy.Subscriber('/Hycan/processed_images'.format(self.vehicle), FourImages, self.detect)
+        rospy.Subscriber('hycan_processed_images'.format(self.vehicle), FourImages, self.detect)
 
     def to_tensor(self, img_msg, device):
         return torch.FloatTensor(
@@ -95,7 +94,7 @@ if __name__ == '__main__':
     package_path = rospack.get_path('detection')
 
     # 获取包的上一级目录
-    ws_path = package_path.split('CenterServer')[0]
+    ws_path = package_path.split('hycan')[0]
 
     model_config_path = ws_path + 'common/Mono3d/configs/models'
     Detector(model_config_path)

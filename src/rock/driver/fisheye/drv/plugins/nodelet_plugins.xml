@@ -1,7 +1,0 @@
-<library path="lib/libdrv_nodelet">
-  <class name="fisheye_drv/drv_nodelet" type="drv_nodelet" base_class_type="nodelet::Nodelet">
-  <description>
-    This is my nodelet.
-  </description>
-  </class>
-</library>

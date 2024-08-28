@@ -1,4 +1,0 @@
-<launch>
-    <node pkg="hycan_driver" type="img_proc_node" name="hycan_image" output="screen"/>
-
-</launch>

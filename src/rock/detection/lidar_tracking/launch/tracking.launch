@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-  <arg name="vehicle_name" default="rock" />
-  <node pkg="lidar_tracking" type="tracker_node" name="tracker_node" output="screen" respawn="true">
-    <rosparam command="load" file="$(find lidar_tracking)/params/vehicle_$(arg vehicle_name).yaml" />
-    <param name="template_filepath" value="$(find lidar_tracking)/params/"/>
-  </node>
-
-</launch>

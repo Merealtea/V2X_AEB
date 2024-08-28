@@ -13,6 +13,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  cv_bridge
+  image_transport
+  message_filters
 )
 
 ## System dependencies are found with CMake's conventions
@@ -120,6 +123,7 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -162,7 +166,7 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  src/socket_hycan_client.py
+  script/socket_hycan_client.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -171,6 +175,16 @@ catkin_install_python(PROGRAMS
 # install(TARGETS ${PROJECT_NAME}_node
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
+add_executable(img_proc_node
+  src/image_processor.cpp
+)
+
+# 添加链接库
+target_link_libraries(img_proc_node
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+)
+
 
 ## Mark libraries for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html

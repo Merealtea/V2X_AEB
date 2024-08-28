@@ -1,3 +1,4 @@
 <launch>
     <node pkg="hycan_comm" type="socket_hycan_client.py" name="hycan_client" output="screen"/>
+    <node pkg="hycan_comm" type="img_proc_node" name="hycan_image" output="screen"/>
 </launch>

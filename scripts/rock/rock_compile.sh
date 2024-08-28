@@ -1,1 +1,1 @@
-cd ../.. && catkin build hycan_msgs rock_driver rock_comm
+cd ../.. && catkin build hycan_msgs rock_comm rock_localization

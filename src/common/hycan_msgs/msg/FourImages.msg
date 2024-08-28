@@ -1,8 +1,7 @@
 Header header 
 
-# GPS & IMU
-sensor_msgs/Imu imu
-sensor_msgs/NavSatFix gps
+# Position(utm) and yaw
+Localization localzation
 
 # Images
 sensor_msgs/Image image_front

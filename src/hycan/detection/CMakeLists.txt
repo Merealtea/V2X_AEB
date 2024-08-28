@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(rock_comm)
+project(hycan_detection)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -8,14 +8,11 @@ project(rock_comm)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  hycan_msgs
   roscpp
   rospy
+  sensor_msgs
   std_msgs
-  geometry_msgs
-  hycan_msgs
-  cv_bridge
-  image_transport
-  message_filters
 )
 
 ## System dependencies are found with CMake's conventions
@@ -25,7 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -75,7 +72,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   geometry_msgs#   std_msgs
+#   sensor_msgs#   std_msgs
 # )
 
 ################################################
@@ -109,8 +106,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES v2v
-#  CATKIN_DEPENDS roscpp geometry_msgs rospy std_msgs
+#  LIBRARIES detection
+#  CATKIN_DEPENDS roscpp sensor_msgs std_msgs
 #  DEPENDS system_lib
 )
 
@@ -121,24 +118,13 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  "include"
+# include
   ${catkin_INCLUDE_DIRS}
-  ${OpenCV_INCLUDE_DIRS}
 )
-
-add_executable(img_proc_node
-  src/image_processor.cpp
-)
-
-target_link_libraries(img_proc_node
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBS}
-)
-
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/v2v.cpp
+#   src/${PROJECT_NAME}/detection.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -149,7 +135,7 @@ target_link_libraries(img_proc_node
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/v2v_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/detection_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -163,6 +149,7 @@ target_link_libraries(img_proc_node
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
+
 #   ${catkin_LIBRARIES}
 # )
 
@@ -174,9 +161,9 @@ target_link_libraries(img_proc_node
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
 ## Mark executable scripts (Python etc.) for installation
-## in contrast to setup.py, you can chsoose the destination
+## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  script/socket_rock_client.py
+  src/detector.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -213,7 +200,7 @@ catkin_install_python(PROGRAMS
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_v2v.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_detection.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

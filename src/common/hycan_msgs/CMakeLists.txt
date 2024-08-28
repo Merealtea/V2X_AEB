@@ -21,6 +21,7 @@ add_message_files(
   Head.msg
   VehicleFeedback.msg
   FourImages.msg  
+  Localization.msg
 )
 
 ## Generate added messages and services with any dependencies listed here

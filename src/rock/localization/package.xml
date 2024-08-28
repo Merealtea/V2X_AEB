@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>rock_localization</name>
+  <version>0.0.1</version>
+  <description>
+    In this package, we combine the latitude/longitude/yaw information
+    from GPS and slam system with IMU and rear wheel encoder.
+    For more information, feel free to contact the maintainer or author.
+  </description>
+  <maintainer email="sjtugscxf@sjtu.edu.cn">Chen Xiaofeng</maintainer>
+  <license>Cyberc3 (SJTU)</license>
+  <author email="sjtugscxf@sjtu.edu.cn">Chen Xiaofeng</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>hycan_msgs</build_depend>
+  <build_export_depend>roscpp</build_export_depend>
+  <build_export_depend>std_msgs</build_export_depend>
+  <build_export_depend>hycan_msgs</build_export_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>hycan_msgs</exec_depend>
+  
+</package>

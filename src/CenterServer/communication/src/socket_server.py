@@ -29,6 +29,8 @@ class SocketServer:
         self.max_client = 5
         self.connected_client = {}
         self.addr_to_vehicle = addr_to_vehicle
+        self.fmt = "diiiiIddd"
+        self.get_fmt_length()
 
         try:
             # we will first regard it as a receiver
@@ -48,6 +50,14 @@ class SocketServer:
         file_name = "{}.bag".format(formatted_datetime)
         self.new_bag = rosbag.Bag(os.path.join(bag_path, file_name.format(datetime.now())), 'w')
 
+    def get_fmt_length(self):
+        self.fmt_length = 0
+        for ch in self.fmt:
+            if ch in ['d', "D"]:
+                self.fmt_length += 8
+            elif ch in ['i', 'f', 'I', 'F']:
+                self.fmt_length += 4
+
     def wait_for_connection(self):
         while not rospy.is_shutdown() and len(self.connected_client) < self.max_client:
             try:
@@ -64,37 +74,14 @@ class SocketServer:
                 continue
 
     def __del__(self):
+        if hasattr(self, 'new_bag'):
+            self.new_bag.close()
+            
         for addr in self.connected_client:
             self.connected_client[addr].close()
 
         if hasattr(self, 'server'):
             self.server.close()
-
-        if hasattr(self, 'new_bag'):
-            self.new_bag.close()
-
-    def unpack_data(self, packed_data):
-        fmt = "diiifffffffddd"
-        unpacked_data = struct.unpack(fmt, packed_data)
-        timestamp, width, height, count, ox, oy, oz, ow, avx, avy, avz, lat, lon, alt = unpacked_data
-
-        # 重建IMU和GPS消息
-        imu_msg = Imu()
-        imu_msg.orientation.x = ox
-        imu_msg.orientation.y = oy
-        imu_msg.orientation.z = oz
-        imu_msg.orientation.w = ow
-        imu_msg.angular_velocity.x = avx
-        imu_msg.angular_velocity.y = avy
-        imu_msg.angular_velocity.z = avz
-
-        gps_msg = NavSatFix()
-        gps_msg.latitude = lat
-        gps_msg.longitude = lon
-        gps_msg.altitude = alt
-
-        return timestamp, width, height, count, imu_msg, gps_msg
-
 
     def receive_from(self, client, addr):
         """ 
@@ -108,7 +95,7 @@ class SocketServer:
         while not rospy.is_shutdown():
             try:
                 # 读取图像数据
-                header = client.recv(72)
+                header = client.recv(self.fmt_length)
                 if not header and max_retry > 0:
                     max_retry -= 1
                     continue
@@ -117,7 +104,8 @@ class SocketServer:
                     self.delete_client(addr)
                     return
 
-                timestamp, width, height, count, imu, gps = self.unpack_data(header)
+                timestamp, width, height, original_width, original_height, count, vhx, vhy, yaw =\
+                        struct.unpack(self.fmt, header) 
 
                 rospy.loginfo(f"Receive image data from {vehicle}: {timestamp}, {width}, {height}, {count}")
                 compressed_data = b''
@@ -137,14 +125,20 @@ class SocketServer:
                 images_msg.image_back.data = images[:, width:2*width].tobytes()
                 images_msg.image_left.data = images[:, 2*width:3*width].tobytes()
                 images_msg.image_right.data = images[:, 3*width:].tobytes()
-                images_msg.imu = imu
-                images_msg.gps = gps
-
+                images_msg.x = vhx
+                images_msg.y = vhy
+                images_msg.yaw = yaw
                 secs = int(timestamp)  # 秒数部分
                 nsecs = int((timestamp - secs) * 1e9)  # 将小数部分转换为纳秒
                 rospy_time = rospy.Time(secs, nsecs)  # 创建 rospy.Time 对象
+
                 # 记录客户端发送消息的时间
                 images_msg.image_front.header.stamp = rospy_time
+                images_msg.image_front.height = height
+                images_msg.image_front.width = width
+                images_msg.image_back.height = original_height
+                images_msg.image.back.width = original_width
+                
                 # 记录接收到消息的时间
                 images_msg.header.stamp = rospy.Time.now()
                 self.new_bag.write(topic, images_msg)

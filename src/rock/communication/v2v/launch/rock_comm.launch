@@ -1,3 +1,4 @@
 <launch>
-    <node pkg="rock_comm" type="socket_rock_client.py" name="rock_client" output="screen"/>
+    <!-- <node pkg="rock_comm" type="socket_rock_client.py" name="rock_client" output="screen"/> -->
+    <node pkg="rock_comm" type="img_proc_node" name="rock_image" output="screen"/>
 </launch>
