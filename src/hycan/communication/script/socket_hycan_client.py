@@ -57,14 +57,14 @@ class SocketClient:
         rospy.loginfo('Socket Bind Success!')
         self._connected = True
 
-    def pack_data(self, timestamp, width, height, count, x, y, yaw):
+    def pack_data(self, timestamp, width, height, original_width, original_height, count, x, y, yaw):
         # 假设我们只关心IMU的orientation和angular_velocity以及GPS的latitude和longitude
-        fmt = "diiIddd"
+        fmt = "diiiiIddd"
         try:
-            packed_data = struct.pack(fmt, timestamp, width, height, count,
+            packed_data = struct.pack(fmt, timestamp, width, height, original_width, original_height, count,
                               x, y, yaw)
         except Exception as e:
-            packed_data = struct.pack(fmt, timestamp, width, height, count,
+            packed_data = struct.pack(fmt, timestamp, width, height, original_width, original_height, count,
                         0.0, 0.0, 0.0)
         return packed_data
 
@@ -99,6 +99,10 @@ class SocketClient:
                 # 将数据打包
                 header = self.pack_data(timestamp, width, height, original_width, original_height, len(compressed_data), img_msg.localization.utm_x, img_msg.localization.utm_y, img_msg.localization.heading)
                 compressed_data = header + compressed_data
+                
+                # this is for test
+                # compressed_data = np.randn(1000).tobytes()
+                # header = self.pack_data(timestamp, width, height, len(compressed_data), img_msg.localization.utm_x, img_msg.localization.utm_y, img_msg.localization.heading)
                 self._socket.sendall(compressed_data)
                 rospy.loginfo("Sending image data...")
             else:

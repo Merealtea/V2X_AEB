@@ -8,6 +8,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   hycan_msgs
+  cyber_msgs
+  message_filters
 )
 
 catkin_package(

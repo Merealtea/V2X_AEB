@@ -1,45 +1,48 @@
 #include <ros/ros.h>
-#include <sensor_msgs/Imu.h>
+#include <cyber_msgs/Heading.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <hycan_msgs/Localization.h>
+#include <message_filters/subscriber.h>
+#include <message_filters/sync_policies/approximate_time.h>
 #include "common/wgs84_to_utm.h"
+
+typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::NavSatFix, cyber_msgs::Heading> MySyncPolicy;
 
 class VehicleLocalization
 {
 public:
     VehicleLocalization() 
     {
-        gps_sub = nh_.subscribe("/wit/fix", 10, &VehicleLocalization::gps_callback, this);
-        imu_sub = nh_.subscribe("/wit/imu", 10, &VehicleLocalization::imu_callback, this);
+        // 订阅GPS和Heaing
+        gps_sub.subscribe(nh_, "/strong/fix", 1);
+        heading_sub.subscribe(nh_, "/strong/heading", 1);
+
+        // 同步策略
+        sync_.reset(new message_filters::Synchronizer<MySyncPolicy>(MySyncPolicy(10), gps_sub, heading_sub));
+        sync_->registerCallback(boost::bind(&VehicleLocalization::localization_callback, this, _1, _2));
 
         // 发布自定义消息
         pub_ = nh_.advertise<hycan_msgs::Localization>("hycan_utm_localization", 1);
     }
 
-    void imu_callback(const sensor_msgs::Imu::ConstPtr& msg) {
-        double q0 = msg->orientation.w;
-        double q1 = msg->orientation.x;
-        double q2 = msg->orientation.y;
-        double q3 = msg->orientation.z;
-        // Calculate yaw from quaternion
-        imu_yaw = atan2(2.0 * (q0 * q3 + q1 * q2), 1.0 - 2.0 * (q2 * q2 + q3 * q3));
-    }
+    void localization_callback(const sensor_msgs::NavSatFix::ConstPtr& gps_msg,
+                                 const cyber_msgs::Heading::ConstPtr& heading_msg) {
 
-    void gps_callback(const sensor_msgs::NavSatFix::ConstPtr& msg) {
-        if (last_gps_valid) {
-            calculate_heading(last_gps, *msg);
-            convert_to_utm(*msg);
-            hycan_msgs::Localization localization_msg;
+        convert_to_utm(*gps_msg);
+        double delta_lon = (gps_msg->longitude - central_meridian) * RADIANS_PER_DEGREE;
+        double convergence_angle = delta_lon * sin(gps_msg->latitude * RADIANS_PER_DEGREE);
+        convergence_angle *= DEGREES_PER_RADIAN;
 
-            localization_msg.utm_x = vhx;
-            localization_msg.utm_y = vhy;
-            localization_msg.heading = corrected_heading;
+        double corrected_heading = heading_msg->data + convergence_angle;
+        ROS_INFO("Corrected Heading: %f degrees", corrected_heading);
 
-            localization_msg.header = msg.get()->header; 
-            pub_.publish(localization_msg);
-        }
-        last_gps = *msg;
-        last_gps_valid = true;
+        hycan_msgs::Localization localization_msg;
+        localization_msg.utm_x = vhx;
+        localization_msg.utm_y = vhy;
+        localization_msg.heading = corrected_heading;
+
+        localization_msg.header = gps_msg.get()->header;
+        pub_.publish(localization_msg);
     }
 
     void convert_to_utm(const sensor_msgs::NavSatFix& gps) {
@@ -48,34 +51,14 @@ public:
         ROS_INFO("UTM Coordinates: Easting %f, Northing %f", vhx, vhy);
     }
 
-    void calculate_heading(const sensor_msgs::NavSatFix& last_gps, const sensor_msgs::NavSatFix& current_gps) {
-        double lon1 = last_gps.longitude * RADIANS_PER_DEGREE;
-        double lat1 = last_gps.latitude * RADIANS_PER_DEGREE;
-        double lon2 = current_gps.longitude * RADIANS_PER_DEGREE;
-        double lat2 = current_gps.latitude * RADIANS_PER_DEGREE;
-        
-        double dLon = lon2 - lon1;
-        double y = sin(dLon) * cos(lat2);
-        double x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
-        double gps_heading = atan2(y, x);
-
-        double corrected_heading = gps_heading + imu_yaw;
-        // Convert radians to degrees
-        corrected_heading = corrected_heading * DEGREES_PER_RADIAN;
-
-        ROS_INFO("Corrected Heading: %f degrees", corrected_heading);
-    }
-
 private:
     ros::NodeHandle nh_;
-    ros::Subscriber gps_sub, imu_sub;
-    bool last_gps_valid = false;
-    sensor_msgs::NavSatFix last_gps;
+    boost::shared_ptr<message_filters::Synchronizer<MySyncPolicy>> sync_;
+    message_filters::Subscriber<sensor_msgs::NavSatFix> gps_sub;
+    message_filters::Subscriber<cyber_msgs::Heading> heading_sub;
 
-    double imu_yaw = 0.0;
-    double corrected_heading = 0.0;
-    double vhx = 0.0, vhy = 0.0;
-    
+    double vhx, vhy;
+    const double central_meridian = 120;
     ros::Publisher pub_;
 };
 
