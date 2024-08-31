@@ -16,8 +16,7 @@ import json
 import threading
 import time
 import cv2
-from hycan_msgs.msg import FourImages
-from sensor_msgs.msg import Imu, NavSatFix
+from hycan_msgs.msg import DetectionResults, Box3D
 import rosbag
 import rospkg
 from datetime import datetime
@@ -29,7 +28,7 @@ class SocketServer:
         self.max_client = 5
         self.connected_client = {}
         self.addr_to_vehicle = addr_to_vehicle
-        self.fmt = "diiiiIddd"
+        self.fmt = "ddiIIddd"
         self.get_fmt_length()
 
         try:
@@ -89,7 +88,7 @@ class SocketServer:
         """
         rospy.loginfo("Start to receive image data.")
         vehicle = self.addr_to_vehicle[addr[0]]
-        topic = f'/{vehicle}/processed_images'
+        topic = f'/{vehicle}/detection_results'
         max_retry = 5
         # pub = rospy.Publisher(f'/{vehicle}/processed_images', FourImages, queue_size=1)
         while not rospy.is_shutdown():
@@ -104,44 +103,42 @@ class SocketServer:
                     self.delete_client(addr)
                     return
 
-                timestamp, width, height, original_width, original_height, count, vhx, vhy, yaw =\
+                image_timestamp, send_timestamp, num_bboxes, idx, count, x, y, yaw =\
                         struct.unpack(self.fmt, header) 
 
-                rospy.loginfo(f"Receive image data from {vehicle}: {timestamp}, {width}, {height}, {count}")
-                compressed_data = b''
-                while len(compressed_data) < count:
-                    compressed_data += client.recv(count - len(compressed_data))
+                rospy.loginfo(f"Receive image data from {vehicle}: {send_timestamp},  {count}")
+                data = b''
+                while len(data) < count:
+                    data += client.recv(count - len(data))
                 st = time.time()
-                images = np.uint8(cv2.imdecode(np.frombuffer(compressed_data, dtype=np.uint8), cv2.IMREAD_COLOR))
-                rospy.loginfo(f"Decompress rate: {1-len(compressed_data)/(width*height*3*4)}")
-                rospy.loginfo(f"Decompress time: {time.time()-st}")
-                rospy.loginfo(f"Receive image length: {len(images)}")
-                rospy.loginfo(f"Time delay is {time.time()-timestamp}")
+            
+                rospy.loginfo(f"Receive data length: {len(data)}")
+                rospy.loginfo(f"Time delay is {time.time()-send_timestamp}")
 
                 # Package the images and imu data into a ROS message
-                images = np.reshape(images, (height, -1, 3))
-                images_msg = FourImages()
-                images_msg.image_front.data = images[:, :width].tobytes()
-                images_msg.image_back.data = images[:, width:2*width].tobytes()
-                images_msg.image_left.data = images[:, 2*width:3*width].tobytes()
-                images_msg.image_right.data = images[:, 3*width:].tobytes()
-                images_msg.localization.utm_x = vhx
-                images_msg.localization.utm_y = vhy
-                images_msg.localization.heading = yaw
-                secs = int(timestamp)  # 秒数部分
-                nsecs = int((timestamp - secs) * 1e9)  # 将小数部分转换为纳秒
-                rospy_time = rospy.Time(secs, nsecs)  # 创建 rospy.Time 对象
-
-                # 记录客户端发送消息的时间
-                images_msg.image_front.header.stamp = rospy_time
-                images_msg.image_front.height = height
-                images_msg.image_front.width = width
-                images_msg.image_back.height = original_height
-                images_msg.image_back.width = original_width
+                detection_results = DetectionResults()
+                data = np.ascotiguousarray(data).reshape(num_bboxes, -1)
+                for i in range(num_bboxes):
+                    box = Box3D()
+                    box.center_x = data[i][0]
+                    box.center_y = data[i][1]
+                    box.center_z = data[i][2]
+                    box.width = data[i][3]
+                    box.length = data[i][4]
+                    box.height = data[i][5]
+                    box.heading = data[i][6]
+                    detection_results.box3d_array.append(box)
+                detection_results.num_boxes = num_bboxes
+                detection_results.localization.utm_x = x   
+                detection_results.localization.utm_y = y
+                detection_results.localization.heading = yaw
                 
                 # 记录接收到消息的时间
-                images_msg.header.stamp = rospy.Time.now()
-                self.new_bag.write(topic, images_msg)
+                detection_results.sender.stamp = rospy.Time.from_sec(send_timestamp)
+                detection_results.sender.idx = idx
+                detection_results.reciever.stamp = rospy.Time.now()
+                detection_results.image_stamp = rospy.Time.from_sec(image_timestamp)
+                self.new_bag.write(topic, detection_results)
 
             except Exception as e:
                 self.delete_client(addr)

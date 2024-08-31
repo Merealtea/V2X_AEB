@@ -31,10 +31,10 @@ public:
         convert_to_utm(*gps_msg);
         double delta_lon = (gps_msg->longitude - central_meridian) * RADIANS_PER_DEGREE;
         double convergence_angle = delta_lon * sin(gps_msg->latitude * RADIANS_PER_DEGREE);
-        convergence_angle *= DEGREES_PER_RADIAN;
+        // convergence_angle *= DEGREES_PER_RADIAN;
 
-        double corrected_heading = heading_msg->data + convergence_angle;
-        ROS_INFO("Corrected Heading: %f degrees", corrected_heading);
+        double corrected_heading = heading_msg->data  + convergence_angle;
+        ROS_INFO("Corrected Heading: %f radians", corrected_heading);
 
         hycan_msgs::Localization localization_msg;
         localization_msg.utm_x = vhx;

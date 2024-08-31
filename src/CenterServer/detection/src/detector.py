@@ -37,7 +37,7 @@ class Detector:
         self.width = 640
 
         # initialze the subscriber
-        rospy.Subscriber('/Hycan/processed_images'.format(self.vehicle), FourImages, self.detect)
+        rospy.Subscriber('hycan_processed_images', FourImages, self.detect)
 
     def to_tensor(self, img_msg, device):
         return torch.FloatTensor(

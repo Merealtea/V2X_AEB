@@ -5,6 +5,8 @@ import rospy
 import numpy as np
 import yaml
 from hycan_msgs.msg import FourImages
+from hycan_msgs.msg import DetectionResults
+from hycan_msgs.msg import Box3D
 import sys
 import os
 # Add the path to the 'src' directory (parent of common and centerserver)
@@ -37,6 +39,7 @@ class Detector:
 
         # initialze the subscriber
         rospy.Subscriber('rock_processed_images'.format(self.vehicle), FourImages, self.detect)
+        self.pub = rospy.Publisher('rock_detection_results'.format(self.vehicle), DetectionResults, queue_size=10)
 
     def to_tensor(self, img_msg, device):
         return torch.FloatTensor(
@@ -75,15 +78,28 @@ class Detector:
         # detect the objects
         result = self.detector(images, img_metas, return_loss=False)[0]
         bbox = result['boxes_3d'].tensor.cpu().numpy()[:, :7]
-        rospy.loginfo("Inference time : {}".format(time() - st))
 
+        results = DetectionResults()
+        for box in bbox:
+            box_msg = Box3D()
+            box_msg.center_x = box[0]
+            box_msg.center_y = box[1]
+            box_msg.center_z = box[2]
+            box_msg.width = box[3]
+            box_msg.length = box[4]
+            box_msg.height = box[5]
+            box_msg.heading = box[6]
+
+            results.box3d_array.append(box_msg)
+        results.num_boxes = len(bbox)
+        results.localization = msg.localization
+        results.image_stamp = msg.image_front.header.stamp
+
+        rospy.loginfo("Inference time : {}".format(time() - st))
         # localization and time delay
         localization = (msg.localization.utm_x, msg.localization.utm_y,msg.localization.heading)
         rospy.loginfo("Localization: {}".format(localization))
-        recv_timestamp = msg.header.stamp
-        send_timestamp = msg.image_front.header.stamp
-        time_delay = (recv_timestamp - send_timestamp).to_sec()
-        rospy.loginfo("Time delay: {}".format(time_delay))
+        self.pub.publish(results)
         
         
 

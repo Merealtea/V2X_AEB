@@ -8,7 +8,7 @@
 '''
 
 import rospy
-from hycan_msgs.msg import FourImages
+from hycan_msgs.msg import DetectionResults
 import socket, sys,  struct
 import json
 import time
@@ -19,13 +19,15 @@ import rospkg
 class SocketClient:
     def __init__(self, local_host, local_port, remote_host, remote_port):
         rospy.init_node('Rock_client', anonymous=True)
-        rospy.Subscriber('rock_processed_images', FourImages, self._transimit_images)
+        rospy.Subscriber('/rock_detection_results', DetectionResults, self._transimit_results)
         self._connected = False
         self.target_host = remote_host
         self.target_port = remote_port
 
         self.local_host = local_host
         self.local_port = local_port
+
+        self.idx = 0
 
     def __del__(self):
         if hasattr(self, '_socket'):
@@ -56,49 +58,28 @@ class SocketClient:
         rospy.loginfo('Socket Bind Success!')
         self._connected = True
 
-    def pack_data(self, timestamp, width, height, original_width, original_height, count, x, y, yaw):
+    def pack_data(self, image_timestamp, send_timestamp, num_bboxes, idx, count, x, y, yaw):
         # 假设我们只关心IMU的orientation和angular_velocity以及GPS的latitude和longitude
-        fmt = "diiiiIddd"
+        fmt = "ddiIIddd"
         try:
-            packed_data = struct.pack(fmt, timestamp, width, height, original_width, original_height, count,
-                              x, y, yaw)
+            packed_data = struct.pack(fmt, image_timestamp, send_timestamp, num_bboxes, idx, count, x, y, yaw)
         except Exception as e:
-            packed_data = struct.pack(fmt, timestamp, width, height, original_width, original_height, count,
-                        0.0, 0.0, 0.0)
+            packed_data = struct.pack(fmt, image_timestamp, send_timestamp, num_bboxes, idx, count, 0.0, 0.0, 0.0)
         return packed_data
 
-    def _transimit_images(self, img_msg : FourImages):
+    def _transimit_results(self, msg):
         # FourImages contrains four sensor_msgs/Image msg
         # 使用socket发送数据
         try:
             if self._connected:
-                # 对于每个图像，序列化并发送
-                width, height = img_msg.image_front.width, img_msg.image_front.height
-                original_width, original_height = \
-                    img_msg.image_back.width, img_msg.image_back.height
-                concat_image = np.zeros((height, width*4, 3), dtype=np.uint8)
-                # 打包发送数据
-                timestamp = time.time()  # 获取当前时间戳
-                rospy.loginfo("image_front shape: {}x{} timestamp: {}".format(width, height, timestamp))
-                for i, image in enumerate([img_msg.image_front,
-                                img_msg.image_back, 
-                                    img_msg.image_left, 
-                                        img_msg.image_right]):
-                    data = np.frombuffer(image.data, dtype=np.uint8).reshape((height, width, 3))
-                    # 将图像数据拼接到一起
-                    concat_image[:, width*i:width*(i+1)] = data
-   
-                st = time.time()
-                # encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 20]        # 设置JPEG图像的质量参数为20,参数可以自定义调整
-                _, encimg = cv2.imencode('.jpg', concat_image)
-                compressed_data = encimg.tobytes()# zlib.compress(serialized_data)
-                rospy.loginfo("Compressed time: {}".format(time.time()-st))
-                rospy.loginfo("Compressed data length: {}".format(len(compressed_data)))
-                
+                boxes_array = np.ascontiguousarray(msg.box3d_array).tobytes()
+                count = len(boxes_array)
+                image_stamp = msg.image_stamp.to_sec() 
+                cur_stamp = time.time()
                 # 将数据打包
-                header = self.pack_data(timestamp, width, height, original_width, original_height, len(compressed_data), img_msg.localization.utm_x, img_msg.localization.utm_y, img_msg.localization.heading)
-                compressed_data = header + compressed_data
-                self._socket.sendall(compressed_data)
+                header = self.pack_data(image_stamp, cur_stamp, msg.num_boxes, self.idx, count, msg.localization.utm_x, msg.localization.utm_y, msg.localization.heading)
+                data = header + boxes_array
+                self._socket.sendall(data)
                 rospy.loginfo("Sending image data...")
             else:
                 rospy.logwarn('Not connected to any server!')
@@ -109,6 +90,7 @@ class SocketClient:
             self._socket.close()
             self._connected = False
             self.connection()
+        self.idx += 1
 
 
 if __name__ ==  '__main__':

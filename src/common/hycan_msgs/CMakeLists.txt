@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
 	message_generation
   sensor_msgs
+  cyber_msgs
 )
 
 ## Generate messages in the 'msg' folder
@@ -22,6 +23,8 @@ add_message_files(
   VehicleFeedback.msg
   FourImages.msg  
   Localization.msg
+  Box3D.msg
+  DetectionResults.msg
 )
 
 ## Generate added messages and services with any dependencies listed here
@@ -30,6 +33,7 @@ generate_messages(
   std_msgs
   geometry_msgs
   sensor_msgs
+  cyber_msgs
 )
 
 catkin_package(
@@ -39,6 +43,7 @@ catkin_package(
 	std_msgs
   geometry_msgs
   sensor_msgs
+  cyber_msgs
 )
 
 ## Specify additional locations of header files
