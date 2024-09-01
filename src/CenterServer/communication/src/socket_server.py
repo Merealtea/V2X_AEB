@@ -35,6 +35,7 @@ class SocketServer:
             # we will first regard it as a receiver
             self.server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
             self.server.bind((local_host,local_port))
+            rospy.loginfo(f"Bind to {local_host}:{local_port}")
             self.server.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4194304)
             self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.server.settimeout(10)
@@ -118,15 +119,17 @@ class SocketServer:
                 # Package the images and imu data into a ROS message
                 detection_results = DetectionResults()
                 data = np.ascotiguousarray(data).reshape(num_bboxes, -1)
+
+                # 将坐标从车辆坐标系转换到世界坐标系
                 for i in range(num_bboxes):
                     box = Box3D()
-                    box.center_x = data[i][0]
-                    box.center_y = data[i][1]
+                    box.center_x = data[i][0] + x
+                    box.center_y = data[i][1] + y
                     box.center_z = data[i][2]
                     box.width = data[i][3]
                     box.length = data[i][4]
                     box.height = data[i][5]
-                    box.heading = data[i][6]
+                    box.heading = data[i][6] + yaw - np.pi/2
                     detection_results.box3d_array.append(box)
                 detection_results.num_boxes = num_bboxes
                 detection_results.localization.utm_x = x   
