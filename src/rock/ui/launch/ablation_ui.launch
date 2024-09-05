@@ -1,3 +1,0 @@
-<launch>
-    <node pkg="ui" type="info_ablation.py" name="info_ablation" output="screen"/>
-</launch>

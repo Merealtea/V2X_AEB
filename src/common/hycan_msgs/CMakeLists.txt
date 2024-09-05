@@ -25,6 +25,7 @@ add_message_files(
   Localization.msg
   Box3D.msg
   DetectionResults.msg
+  Image.msg
 )
 
 ## Generate added messages and services with any dependencies listed here

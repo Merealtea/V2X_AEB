@@ -138,7 +138,7 @@ class SocketServer:
                 
                 # 记录接收到消息的时间
                 detection_results.sender.stamp = rospy.Time.from_sec(send_timestamp)
-                detection_results.sender.idx = idx
+                detection_results.sender.seq = idx
                 detection_results.reciever.stamp = rospy.Time.now()
                 detection_results.image_stamp = rospy.Time.from_sec(image_timestamp)
                 self.new_bag.write(topic, detection_results)

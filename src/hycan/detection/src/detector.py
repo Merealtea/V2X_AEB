@@ -16,6 +16,7 @@ from core.bbox.structures.lidar_box3d import LiDARInstance3DBoxes
 import torch
 import rospkg
 from time import time
+import cv2
 
 class Detector:
     def __init__(self, ckpt_path):
@@ -41,7 +42,7 @@ class Detector:
 
     def to_tensor(self, img_msg, device):
         return torch.FloatTensor(
-            np.frombuffer(img_msg.data, dtype=np.uint8)
+            np.array(img_msg.data, dtype=np.float32)
                 .reshape((3, self.height, self.width))).to(device)
 
     def detect(self, msg):
@@ -60,7 +61,7 @@ class Detector:
         img_metas = [
             dict(
                 img_shape=[(self.height, self.width, 3)] * 4,
-                ori_shape=[(msg.image_back.height, msg.image_back.width, 3)] *4,
+                ori_shape=[(msg.height, msg.width, 3)] *4,
                 pad_shape=[(self.height, self.width, 3)] * 4,
                 scale_factor=np.array([0.5, 0.5, 0.5, 0.5], dtype=np.float32),
                 flip=False,

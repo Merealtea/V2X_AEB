@@ -1,8 +1,0 @@
-<!-- -->
-<launch>
-    <node pkg="can_encoder" type="can_encoder" name="can_encoder" output="screen">
-        <param name="auto_speed" type="bool" value="false"/>
-        <param name="auto_steer" type="bool" value="true"/>
-        <param name="bodywork_control" type="bool" value="false" />
-    </node>
-</launch>

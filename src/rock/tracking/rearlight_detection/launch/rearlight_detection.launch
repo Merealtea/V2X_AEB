@@ -1,4 +1,0 @@
-<launch>
-    <!-- <node pkg="rearlight_detection" type="$(find rearlight_detection)/scripts/rearlight_detector.py" name="rearlight_detector" output="screen"/> -->
-    <node pkg="rearlight_detection" type="scripts/rearlight_detector.py" name="rearlight_detector" output="screen"/>
-</launch>

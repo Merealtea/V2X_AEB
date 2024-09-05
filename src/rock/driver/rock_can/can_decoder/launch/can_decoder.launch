@@ -1,3 +1,0 @@
-<launch>
-    <node pkg="can_decoder" type="can_decoder" name="can_decoder" output="screen"/>
-</launch>

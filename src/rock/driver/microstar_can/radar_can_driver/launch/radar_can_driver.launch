@@ -1,4 +1,0 @@
-<launch>
-    <node pkg="radar_can_driver" type="radar_can_driver" name="radar_can_driver" output="screen"/>
-    <include file = "$(find radar_can_decoder)/launch/radar_can_decoder.launch"/>
-</launch>

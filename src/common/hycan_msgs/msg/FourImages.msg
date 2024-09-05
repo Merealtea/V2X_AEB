@@ -3,8 +3,12 @@ Header header
 # Position(utm) and yaw
 Localization localization
 
+# image original shape
+uint16 height
+uint16 width
+
 # Images
-sensor_msgs/Image image_front
-sensor_msgs/Image image_back
-sensor_msgs/Image image_left
-sensor_msgs/Image image_right
+Image image_front
+Image image_back
+Image image_left
+Image image_right

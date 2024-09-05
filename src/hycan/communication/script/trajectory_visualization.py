@@ -10,10 +10,10 @@ import math
 class Visualization:
     def __init__(self):
         rospy.init_node('hycan_vis', anonymous=True)
-        self.pub = rospy.Publisher('visualization_marker', Marker, queue_size=10)
+        self.pub = rospy.Publisher('hycan_vehicle', Marker, queue_size=10)
         rospy.Subscriber('/hycan_utm_localization', Localization, self.callback)
-        self.init_x = None
-        self.init_y = None
+        self.init_x = 1131.573701
+        self.init_y = 1408.584124
 
     def initialize_marker(self):
         marker = Marker()

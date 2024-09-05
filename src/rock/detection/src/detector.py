@@ -4,9 +4,7 @@
 import rospy
 import numpy as np
 import yaml
-from hycan_msgs.msg import FourImages
-from hycan_msgs.msg import DetectionResults
-from hycan_msgs.msg import Box3D
+from hycan_msgs.msg import FourImages, DetectionResults, Box3D
 import sys
 import os
 # Add the path to the 'src' directory (parent of common and centerserver)
@@ -43,7 +41,7 @@ class Detector:
 
     def to_tensor(self, img_msg, device):
         return torch.FloatTensor(
-            np.frombuffer(img_msg.data, dtype=np.uint8)
+            np.array(img_msg.data, dtype=np.float32)
                 .reshape((3, self.height, self.width))).to(device)
 
     def detect(self, msg):

@@ -1,7 +1,4 @@
 #include <ros/ros.h>
-#include <image_transport/image_transport.h>
-#include <cv_bridge/cv_bridge.h>
-#include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/CompressedImage.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -9,6 +6,8 @@
 #include <message_filters/sync_policies/approximate_time.h>
 #include <hycan_msgs/FourImages.h>  // 自定义消息
 #include <hycan_msgs/Localization.h>
+#include <hycan_msgs/Image.h>
+
 
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::CompressedImage,
                                                          sensor_msgs::CompressedImage, 
@@ -19,7 +18,7 @@ typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::CompressedI
 class ImageProcessor
 {
 public:
-    ImageProcessor() : it_(nh_)
+    ImageProcessor() 
     {
         // 订阅四个压缩图像话题
         sub1_.subscribe(nh_, "/driver/fisheye/front/compressed", 1);
@@ -43,8 +42,7 @@ public:
                             const hycan_msgs::Localization::ConstPtr& msg5)
     {
         // 只有在gps有的情况下才更新消息
-        std::vector<cv::Mat> images(4);
-        std::vector<sensor_msgs::Image> out_msgs(4);
+        std::vector<hycan_msgs::Image> out_msgs(4);
         std::vector<sensor_msgs::CompressedImageConstPtr> msgs = {msg1, msg2, msg3, msg4};
 
         int original_width;
@@ -56,17 +54,29 @@ public:
             original_width = cv_image.rows;
             original_height = cv_image.cols;
 
+            // 转换图像为浮点类型，便于归一化操作
+            cv_image.convertTo(cv_image, CV_32F);
+
             // 1. 先resize
-            cv::resize(cv_image, images[i], cv::Size(640, 480));  // 缩放到640x480
+            cv::resize(cv_image, cv_image, cv::Size(640, 480));  // 缩放到640x480
 
             // 2. 归一化
-            // TODO(cxy)
+            cv::Mat mean_mat(cv_image.size(), cv_image.type(), img_mean);
+            cv::Mat std_mat(cv_image.size(), cv_image.type(), img_std);
 
-            cv_bridge::CvImage out_cv_image;
-            out_cv_image.header = msgs[i]->header;
-            out_cv_image.encoding = "bgr8";
-            out_cv_image.image = images[i];
-            out_msgs[i] = *out_cv_image.toImageMsg();
+            // 图像减去均值
+            cv::subtract(cv_image, mean_mat, cv_image);
+
+            // 图像除以方差
+            cv::divide(cv_image, std_mat, cv_image);
+
+            out_msgs[i].header = msgs[i]->header; 
+            out_msgs[i].height = cv_image.rows;
+            out_msgs[i].width = cv_image.cols;
+
+            cv_image = cv_image.reshape(1, cv_image.total() * cv_image.channels());
+            out_msgs[i].data.assign((float*)cv_image.data, (float*)cv_image.data + cv_image.total());
+
         }
 
         // 发布自定义消息
@@ -76,8 +86,8 @@ public:
         out_image_msg.image_left = out_msgs[2];
         out_image_msg.image_right = out_msgs[3];
 
-        out_image_msg.image_back.height = original_height;
-        out_image_msg.image_back.width = original_width;
+        out_image_msg.height = original_height;
+        out_image_msg.width = original_width;
 
         out_image_msg.localization = *msg5;
         pub_.publish(out_image_msg);
@@ -88,11 +98,14 @@ public:
 
 private:
     ros::NodeHandle nh_;
-    image_transport::ImageTransport it_;
     message_filters::Subscriber<sensor_msgs::CompressedImage> sub1_, sub2_, sub3_, sub4_;
     message_filters::Subscriber<hycan_msgs::Localization> sub5_;
     boost::shared_ptr<message_filters::Synchronizer<MySyncPolicy>> sync_;
     
+    // 定义均值和方差，分别对应 BGR 颜色通道
+    cv::Scalar img_mean = cv::Scalar(123.675, 116.28, 103.53);
+    cv::Scalar img_std = cv::Scalar(58.395, 57.12, 57.375);
+
     ros::Publisher pub_;
 };
 

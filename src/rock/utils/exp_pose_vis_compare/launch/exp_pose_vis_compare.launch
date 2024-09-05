@@ -1,4 +1,0 @@
-<launch>
-    <param name="use_sim_time" value="false" />
-    <node pkg="exp_pose_vis_compare" type="exp_pose_vis_compare" name="exp_pose_vis_compare" output="screen"/>
-</launch>
