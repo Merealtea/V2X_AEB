@@ -17,6 +17,7 @@ __pycache__/
 *.tar*
 *.engine
 *.bag
+*.pcd
 scripts/control_bag_test.sh
 logs
 build

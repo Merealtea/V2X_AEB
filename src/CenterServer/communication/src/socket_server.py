@@ -15,7 +15,6 @@ import numpy as np
 import json
 import threading
 import time
-import cv2
 from hycan_msgs.msg import DetectionResults, Box3D
 import rosbag
 import rospkg
@@ -30,6 +29,8 @@ class SocketServer:
         self.addr_to_vehicle = addr_to_vehicle
         self.fmt = "ddiIIddd"
         self.get_fmt_length()
+        self.result_pub = rospy.Publisher('detection_results', DetectionResults, queue_size=10)
+        self.fusion_sub = rospy.Subscriber('fusion_results', DetectionResults, self.send_fusion_result)
 
         try:
             # we will first regard it as a receiver
@@ -111,7 +112,6 @@ class SocketServer:
                 data = b''
                 while len(data) < count:
                     data += client.recv(count - len(data))
-                st = time.time()
             
                 rospy.loginfo(f"Receive data length: {len(data)}")
                 rospy.loginfo(f"Time delay is {time.time()-send_timestamp}")
@@ -142,11 +142,38 @@ class SocketServer:
                 detection_results.reciever.stamp = rospy.Time.now()
                 detection_results.image_stamp = rospy.Time.from_sec(image_timestamp)
                 self.new_bag.write(topic, detection_results)
+                self.result_pub.publish(detection_results)
 
             except Exception as e:
                 self.delete_client(addr)
                 rospy.logwarn(e)
                 return
+
+    def send_fusion_result(self, fusion_msg):
+        fusion_result = []
+        for i in range(fusion_msg.num_boxes):
+            fusion_result.append([
+                fusion_msg.box3d_array[i].center_x,
+                fusion_msg.box3d_array[i].center_y,
+                fusion_msg.box3d_array[i].center_z,
+                fusion_msg.box3d_array[i].width,
+                fusion_msg.box3d_array[i].length,
+                fusion_msg.box3d_array[i].height,
+                fusion_msg.box3d_array[i].heading
+            ])
+        
+        fusion_result = np.array(fusion_result).tobytes()
+        header = struct.pack(self.fmt, fusion_msg.sender.stamp.to_sec(), time.time(), fusion_msg.num_boxes, 0, len(fusion_result), 0, 0, 0)
+
+        # Send fusion results to all connected clients
+        for addr, client in self.connected_client.items():
+            try:
+                client.sendall(header)
+                client.sendall(fusion_result)
+            except Exception as e:
+                rospy.logwarn(e)
+                continue
+
 
     def delete_client(self, addr):
         if addr in self.connected_client:

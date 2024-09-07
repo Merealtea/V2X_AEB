@@ -8,7 +8,7 @@
 '''
 
 import rospy
-from hycan_msgs.msg import DetectionResults
+from hycan_msgs.msg import DetectionResults, Box3D
 import socket, sys, struct
 import json
 import time
@@ -28,10 +28,23 @@ class SocketClient:
         self.local_port = local_port
         self.idx = 0
 
+        self.fmt = "ddiIIddd"
+        self.get_fmt_length()
+
+        self.fusion_pub = rospy.Publisher('fusion_results', DetectionResults, queue_size=10)
+
 
     def __del__(self):
         if hasattr(self, '_socket'):
             self._socket.close()
+
+    def get_fmt_length(self):
+        self.fmt_length = 0
+        for ch in self.fmt:
+            if ch in ['d', "D", 'I']:
+                self.fmt_length += 8
+            elif ch in ['i', 'f', 'F']:
+                self.fmt_length += 4
 
     def connection(self):
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -60,11 +73,10 @@ class SocketClient:
 
     def pack_data(self, image_timestamp, send_timestamp, num_bboxes, idx, count, x, y, yaw):
         # 假设我们只关心IMU的orientation和angular_velocity以及GPS的latitude和longitude
-        fmt = "ddiIIddd"
         try:
-            packed_data = struct.pack(fmt, image_timestamp, send_timestamp, num_bboxes, idx, count, x, y, yaw)
+            packed_data = struct.pack(self.fmt, image_timestamp, send_timestamp, num_bboxes, idx, count, x, y, yaw)
         except Exception as e:
-            packed_data = struct.pack(fmt, image_timestamp, send_timestamp, num_bboxes, idx, count, 0.0, 0.0, 0.0)
+            packed_data = struct.pack(self.fmt, image_timestamp, send_timestamp, num_bboxes, idx, count, 0.0, 0.0, 0.0)
         return packed_data
 
     def _transimit_results(self, msg):
@@ -91,6 +103,40 @@ class SocketClient:
             self._connected = False
             self.connection()
         self.idx += 1
+
+    def _recieve_results(self):
+
+        while not rospy.is_shutdown():
+            try:
+                if self._connected:
+                    fusion_timestamp, send_timestamp, num_bboxes, _, count, _, _, _ = self._socket.recv(self.fmt_length)
+                    fusion_data = ''
+                    while len(fusion_data) < count:
+                        fusion_data += self._socket.recv(count - len(fusion_data))
+                    fusion_data = np.frombuffer(fusion_data, dtype=np.float32).reshape(num_bboxes, -1)
+
+                    fusion_results = DetectionResults()
+                    for i in range(num_bboxes):
+                        box = Box3D()
+                        box.center_x = fusion_data[i][0]
+                        box.center_y = fusion_data[i][1]
+                        box.center_z = fusion_data[i][2]
+                        box.width = fusion_data[i][3]
+                        box.length = fusion_data[i][4]
+                        box.height = fusion_data[i][5]
+                        box.heading = fusion_data[i][6]
+                        fusion_results.box3d_array.append(box)
+                    fusion_results.num_boxes = num_bboxes
+                    fusion_results.sender.stamp = rospy.Time.from_sec(send_timestamp)
+                    fusion_results.reciever.stamp = rospy.Time.now()
+                    fusion_results.image_stamp = rospy.Time.from_sec(fusion_timestamp)
+
+                else:
+                    rospy.logwarn('Not connected to any server!')
+                    rospy.sleep(1)
+            except Exception as e:
+                rospy.logerr("Failed to receive fusion results {}.".format(e))
+                rospy.sleep(1)
 
 
 if __name__ ==  '__main__':

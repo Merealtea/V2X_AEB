@@ -12,8 +12,8 @@ import numpy as np
 import math
 import open3d as o3d
 
-GLOBAL_ZERO_X = 349350
-GLOBAL_ZERO_Y = 3432459
+GLOBAL_ZERO_X = 351425.09269358893
+GLOBAL_ZERO_Y = 3433830.3251591502
 
 # 读取PCD文件
 pcd = o3d.io.read_point_cloud("/mnt/pool1/outside_parking/color_map.pcd")
