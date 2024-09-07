@@ -8,12 +8,13 @@
 '''
 
 import rospy
-from hycan_msgs.msg import DetectionResults
+from hycan_msgs.msg import DetectionResults, Box3D
 import socket, sys,  struct
 import json
 import time
 import numpy as np
 import rospkg
+import threading
 
 class SocketClient:
     def __init__(self, local_host, local_port, remote_host, remote_port):
@@ -32,19 +33,16 @@ class SocketClient:
         self.get_fmt_length()
 
         self.fusion_pub = rospy.Publisher('fusion_results', DetectionResults, queue_size=10)
-
+        thread = threading.Thread(target=self._recieve_results)
+        thread.start()
 
     def __del__(self):
         if hasattr(self, '_socket'):
             self._socket.close()
 
     def get_fmt_length(self):
-        self.fmt_length = 0
-        for ch in self.fmt:
-            if ch in ['d', "D", 'I']:
-                self.fmt_length += 8
-            elif ch in ['i', 'f', 'F']:
-                self.fmt_length += 4
+        self.fmt_length = struct.calcsize(self.fmt)
+        rospy.loginfo(f"Format length is {self.fmt_length}")
 
     def connection(self):
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -84,7 +82,13 @@ class SocketClient:
         # 使用socket发送数据
         try:
             if self._connected:
-                boxes_array = np.ascontiguousarray(msg.box3d_array).tobytes()
+                boxes_array = []
+                for i in range(msg.num_boxes):
+                    box = [msg.box3d_array[i].center_x, msg.box3d_array[i].center_y, msg.box3d_array[i].center_z,
+                           msg.box3d_array[i].width, msg.box3d_array[i].length, msg.box3d_array[i].height,
+                           msg.box3d_array[i].heading]
+                    boxes_array.append(box)
+                boxes_array = np.array(boxes_array, dtype=np.float32).tobytes()
                 count = len(boxes_array)
                 image_stamp = msg.image_stamp.to_sec() 
                 cur_stamp = time.time()
@@ -92,7 +96,7 @@ class SocketClient:
                 header = self.pack_data(image_stamp, cur_stamp, msg.num_boxes, self.idx, count, msg.localization.utm_x, msg.localization.utm_y, msg.localization.heading)
                 data = header + boxes_array
                 self._socket.sendall(data)
-                rospy.loginfo("Sending image data...")
+                rospy.loginfo("Sending data of {} length".format(count))
             else:
                 rospy.logwarn('Not connected to any server!')
 
@@ -109,12 +113,14 @@ class SocketClient:
         while not rospy.is_shutdown():
             try:
                 if self._connected:
-                    fusion_timestamp, send_timestamp, num_bboxes, _, count, _, _, _ = self._socket.recv(self.fmt_length)
-                    fusion_data = ''
+                    fusion_timestamp, send_timestamp, num_bboxes, _, count, _, _, _ = struct.unpack(self.fmt, self._socket.recv(self.fmt_length))
+                    fusion_data = b''
                     while len(fusion_data) < count:
                         fusion_data += self._socket.recv(count - len(fusion_data))
-                    fusion_data = np.frombuffer(fusion_data, dtype=np.float32).reshape(num_bboxes, -1)
-
+                    if num_bboxes > 0:
+                        fusion_data = np.frombuffer(fusion_data, dtype=np.float32).reshape(num_bboxes, -1)
+                    else:
+                        fusion_data = np.array([])
                     fusion_results = DetectionResults()
                     for i in range(num_bboxes):
                         box = Box3D()
@@ -130,6 +136,9 @@ class SocketClient:
                     fusion_results.sender.stamp = rospy.Time.from_sec(send_timestamp)
                     fusion_results.reciever.stamp = rospy.Time.now()
                     fusion_results.image_stamp = rospy.Time.from_sec(fusion_timestamp)
+
+                    rospy.loginfo("Received fusion {} bboxes.".format(num_bboxes))
+                    rospy.loginfo("Time delay: {}s".format(time.time() - fusion_timestamp))
 
                 else:
                     rospy.logwarn('Not connected to any server!')

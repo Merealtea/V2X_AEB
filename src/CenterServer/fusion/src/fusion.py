@@ -24,8 +24,8 @@ class DetectionFusion:
         self.fusion_result_pub = rospy.Publisher('fusion_results', DetectionResults, queue_size=10)
 
         thread = threading.Thread(target=self.send_fusion)
-        thread.join()
         thread.start()
+        thread.join()
 
     def fusion(self, msg):
         single_results = []
@@ -51,6 +51,8 @@ class DetectionFusion:
 
             self.fusion_result_pub.publish(fusion_results)
             self.fusion_results = []
+
+            rospy.loginfo("Send fusion results")
 
             rate.sleep()
 

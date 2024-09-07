@@ -52,12 +52,8 @@ class SocketServer:
         self.new_bag = rosbag.Bag(os.path.join(bag_path, file_name.format(datetime.now())), 'w')
 
     def get_fmt_length(self):
-        self.fmt_length = 0
-        for ch in self.fmt:
-            if ch in ['d', "D", 'I']:
-                self.fmt_length += 8
-            elif ch in ['i', 'f', 'F']:
-                self.fmt_length += 4
+        self.fmt_length = struct.calcsize(self.fmt)
+        rospy.loginfo(f"Format length is {self.fmt_length}")
 
     def wait_for_connection(self):
         while not rospy.is_shutdown() and len(self.connected_client) < self.max_client:
@@ -118,7 +114,7 @@ class SocketServer:
 
                 # Package the images and imu data into a ROS message
                 detection_results = DetectionResults()
-                data = np.ascotiguousarray(data).reshape(num_bboxes, -1)
+                data = np.ascontiguousarray(np.frombuffer(data, dtype=np.float32)).reshape(num_bboxes, -1)
 
                 # 将坐标从车辆坐标系转换到世界坐标系
                 for i in range(num_bboxes):
@@ -170,6 +166,7 @@ class SocketServer:
             try:
                 client.sendall(header)
                 client.sendall(fusion_result)
+                rospy.loginfo(f"Send fusion results to {addr}")
             except Exception as e:
                 rospy.logwarn(e)
                 continue
