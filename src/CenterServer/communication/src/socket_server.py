@@ -158,7 +158,7 @@ class SocketServer:
                 fusion_msg.box3d_array[i].heading
             ])
         
-        fusion_result = np.array(fusion_result).tobytes()
+        fusion_result = np.array(fusion_result, np.float32).tobytes()
         header = struct.pack(self.fmt, fusion_msg.sender.stamp.to_sec(), time.time(), fusion_msg.num_boxes, 0, len(fusion_result), 0, 0, 0)
 
         # Send fusion results to all connected clients

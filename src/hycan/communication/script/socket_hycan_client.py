@@ -87,6 +87,7 @@ class SocketClient:
                            msg.box3d_array[i].width, msg.box3d_array[i].length, msg.box3d_array[i].height,
                            msg.box3d_array[i].heading]
                     boxes_array.append(box)
+                print(boxes_array)
                 boxes_array = np.array(boxes_array, dtype=np.float32).tobytes()
                 count = len(boxes_array)
                 image_stamp = msg.image_stamp.to_sec() 
