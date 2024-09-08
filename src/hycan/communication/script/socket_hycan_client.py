@@ -13,7 +13,7 @@ import socket, sys, struct
 import json
 import time
 import numpy as np
-import cv2
+import threading
 import rospkg
 
 class SocketClient:
@@ -32,7 +32,8 @@ class SocketClient:
         self.get_fmt_length()
 
         self.fusion_pub = rospy.Publisher('fusion_results', DetectionResults, queue_size=10)
-
+        thread = threading.Thread(target=self._recieve_results)
+        thread.start()
 
     def __del__(self):
         if hasattr(self, '_socket'):
@@ -137,7 +138,7 @@ class SocketClient:
 
                     rospy.loginfo("Received fusion {} bboxes.".format(num_bboxes))
                     rospy.loginfo("Time delay: {}s".format(time.time() - fusion_timestamp))
-
+                    self.fusion_pub.publish(fusion_results)
                 else:
                     rospy.logwarn('Not connected to any server!')
                     rospy.sleep(1)

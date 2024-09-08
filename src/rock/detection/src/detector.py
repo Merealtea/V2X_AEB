@@ -11,9 +11,9 @@ import os
 src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(src_path)
 sys.path.append(os.path.join(src_path, 'common', 'Mono3d'))
-from common.Mono3d.models.builder import build_detector
-from core.bbox.structures.lidar_box3d import LiDARInstance3DBoxes
-import torch
+# from common.Mono3d.models.builder import build_detector
+# from core.bbox.structures.lidar_box3d import LiDARInstance3DBoxes
+# import torch
 import rospkg
 from time import time
 
@@ -27,10 +27,10 @@ class Detector:
         config = os.path.join(ckpt_path, 'mv_dfm_{}.yaml'.format(self.vehicle))
         with open(config, 'r') as f:
             config = yaml.safe_load(f)
-        self.detector = build_detector(config)
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.detector.to(self.device)
-        self.detector.eval()
+        # self.detector = build_detector(config)
+        # self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # self.detector.to(self.device)
+        # self.detector.eval()
 
         self.height = 480
         self.width = 640
@@ -49,33 +49,37 @@ class Detector:
         st = time()
 
         # get the images
-        image_front = self.to_tensor(msg.image_front, self.device)
-        image_back = self.to_tensor(msg.image_back, self.device)
-        image_left = self.to_tensor(msg.image_left, self.device)
-        image_right = self.to_tensor(msg.image_right, self.device)
+        # image_front = self.to_tensor(msg.image_front, self.device)
+        # image_back = self.to_tensor(msg.image_back, self.device)
+        # image_left = self.to_tensor(msg.image_left, self.device)
+        # image_right = self.to_tensor(msg.image_right, self.device)
 
-        # turn the images into tensor
-        images = torch.stack([image_front, image_back, image_left, image_right]).unsqueeze(0)
-        rospy.loginfo("Images shape: {}".format(images.shape))
-        img_metas = [
-            dict(
-                img_shape=[(self.height, self.width, 3)] * 4,
-                ori_shape=[(msg.image_back.height, msg.image_back.width, 3)] *4,
-                pad_shape=[(self.height, self.width, 3)] * 4,
-                scale_factor=np.array([0.5, 0.5, 0.5, 0.5], dtype=np.float32),
-                flip=False,
-                keep_ratio=True,
-                num_views = 4,
-                num_ref_frames = 0,
-                direction = ['front', 'back', 'left', 'right'],
-                pad_size_divisor = 16,
-                box_type_3d = LiDARInstance3DBoxes,
-            )
-        ]
+        # # turn the images into tensor
+        # images = torch.stack([image_front, image_back, image_left, image_right]).unsqueeze(0)
+        # rospy.loginfo("Images shape: {}".format(images.shape))
+        # img_metas = [
+        #     dict(
+        #         img_shape=[(self.height, self.width, 3)] * 4,
+        #         ori_shape=[(msg.image_back.height, msg.image_back.width, 3)] *4,
+        #         pad_shape=[(self.height, self.width, 3)] * 4,
+        #         scale_factor=np.array([0.5, 0.5, 0.5, 0.5], dtype=np.float32),
+        #         flip=False,
+        #         keep_ratio=True,
+        #         num_views = 4,
+        #         num_ref_frames = 0,
+        #         direction = ['front', 'back', 'left', 'right'],
+        #         pad_size_divisor = 16,
+        #         box_type_3d = LiDARInstance3DBoxes,
+        #     )
+        # ]
         
-        # detect the objects
-        result = self.detector(images, img_metas, return_loss=False)[0]
-        bbox = result['boxes_3d'].tensor.cpu().numpy()[:, :7]
+        # # detect the objects
+        # result = self.detector(images, img_metas, return_loss=False)[0]
+        # bbox = result['boxes_3d'].tensor.cpu().numpy()[:, :7] 
+
+        # Demo code
+        rospy.sleep(0.2) # simulate the inference time
+        bbox = []
 
         results = DetectionResults()
         for box in bbox:

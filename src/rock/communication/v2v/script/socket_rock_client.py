@@ -88,6 +88,7 @@ class SocketClient:
                            msg.box3d_array[i].width, msg.box3d_array[i].length, msg.box3d_array[i].height,
                            msg.box3d_array[i].heading]
                     boxes_array.append(box)
+                
                 boxes_array = np.array(boxes_array, dtype=np.float32).tobytes()
                 count = len(boxes_array)
                 image_stamp = msg.image_stamp.to_sec() 
@@ -132,6 +133,7 @@ class SocketClient:
                         box.height = fusion_data[i][5]
                         box.heading = fusion_data[i][6]
                         fusion_results.box3d_array.append(box)
+
                     fusion_results.num_boxes = num_bboxes
                     fusion_results.sender.stamp = rospy.Time.from_sec(send_timestamp)
                     fusion_results.reciever.stamp = rospy.Time.now()
