@@ -5,7 +5,7 @@ from sensor_msgs.msg import Image
 from cyber_msgs.msg import Heading
 import numpy as np
 import matplotlib.pyplot as plt
-from sensor_msgs.msg import NavSatFix, Imu
+from hycan_msgs.msg import DetectionResults
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from pyproj import Transformer
 import numpy as np
