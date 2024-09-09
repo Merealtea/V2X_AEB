@@ -9,7 +9,6 @@ SpeedControllerTest::SpeedControllerTest(ros::NodeHandle* nh) : nh_(nh) {
   sp_.err_curr = 0.0;
   sp_.err_sum = 0.0;
   sp_.state = false;
-  cnt_ = 0;
 
   //运行时可更改参数
   //配置动态更改参数服务
@@ -22,19 +21,56 @@ SpeedControllerTest::SpeedControllerTest(ros::NodeHandle* nh) : nh_(nh) {
   detection_sub_ = nh_->subscribe("fusion_results", 1,
                                   &SpeedControllerTest::DectectionCallback, this);
 
+  pub_auto_drive_ = nh_->advertise<std_msgs::Bool>("/rock_can/auto_drive", 10);
   pub_speed_cmd_ =
       nh_->advertise<cyber_msgs::speedcmd>("/rock_can/speed_command", 5);
   pub_brake_cmd_ =
       nh_->advertise<cyber_msgs::brakecmd>("/rock_can/brake_command", 5);
-  // timer_ = nh_->createTimer(ros::Duration(0.05),
-  //                           &SpeedControllerTest::TimerCallback, this);
-  ros::spin();
+  timer_ = nh_->createTimer(ros::Duration(0.05),
+                            &SpeedControllerTest::TimerCallback, this);
+  ROS_INFO("Init SpeedControllerTest Finish");
 }
 
 void SpeedControllerTest::LocalizationCallback(const hycan_msgs::Localization& msg) {
   utm_x = msg.utm_x;
   utm_y = msg.utm_y;
   heading = msg.heading;
+  
+  float distance = sqrt(pow(1139.19620792 - utm_x, 2) + pow(1391.24830986 - utm_y, 2));
+  if (distance < 5.0){
+    emergency_status = true;
+  }
+  else{
+    emergency_status = false;
+  }
+  cout << "emergency_status: " << emergency_status << endl;
+}
+
+void SpeedControllerTest::TimerCallback(const ros::TimerEvent&) {
+  if (emergency_status){
+    if (!auto_drive){
+      std_msgs::Bool auto_drive_msg;
+      auto_drive_msg.data = true;
+      pub_auto_drive_.publish(auto_drive_msg);
+      auto_drive = true;
+      cout << "set auto drive" << endl;
+    }
+    else{
+      sp_.brake_cmd = BRAKE_MIN * 0.8;
+      brake_cmd_.deceleration = sp_.brake_cmd;
+      brake_cmd_.enable_auto_brake = true;
+
+      sp_.cmd = SPEED_MIN;
+      sp_.err_sum = 0.0;
+      speed_cmd_.speed_cmd = TORQU_MIN;
+      speed_cmd_.enable_auto_speed = true;
+      speed_cmd_.is_updated = true;
+      speed_cmd_.gear = 1;
+      pub_speed_cmd_.publish(speed_cmd_);
+      pub_brake_cmd_.publish(brake_cmd_);
+      cout << "brake!!!!!!!!!!!!!!!!" << endl;
+    }
+  }
 }
 
 void SpeedControllerTest::DectectionCallback(
@@ -42,7 +78,7 @@ void SpeedControllerTest::DectectionCallback(
   int8_t num_boxes = detection_result.num_boxes;
   std::vector<std::vector<float>> boxes;
 
-  float min_distance = 1000;
+  float min_distance = 1000.0;
 
   for (int i = 0; i < num_boxes; i++) {
     std::vector<float> box;
@@ -60,23 +96,11 @@ void SpeedControllerTest::DectectionCallback(
 
   ROS_INFO("min_distance: %f", min_distance);
 
-  if (min_distance < 5) {
+  if (min_distance < 5.0) {
     // start to brake
-
-    sp_.brake_cmd = BRAKE_MIN * 0.8;
-    brake_cmd_.deceleration = sp_.brake_cmd;
-    brake_cmd_.enable_auto_brake = true;
-
-    cnt_ ++;
-    if (cnt_ <= 15) {
-      sp_.cmd = SPEED_MIN;
-      sp_.err_sum = 0.0;
-      speed_cmd_.speed_cmd = TORQU_MIN;
-      speed_cmd_.enable_auto_speed = true;
-      speed_cmd_.is_updated = true;
-      speed_cmd_.gear = 1;
-      pub_speed_cmd_.publish(speed_cmd_);
-      pub_brake_cmd_.publish(brake_cmd_);
-    }
+    emergency_status = true;
+  }
+  else{
+    emergency_status = false;
   }
 }

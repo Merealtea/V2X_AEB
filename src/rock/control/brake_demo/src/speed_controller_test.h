@@ -9,6 +9,9 @@
 #include "ros/ros.h"
 #include "std_msgs/Float64.h"
 #include "std_msgs/Int8.h"
+#include "std_msgs/Bool.h" 
+
+#include "iostream"
 
 const int TORQU_MAX = 3000;  //底层最大可到5000
 const int TORQU_MIN = 0;
@@ -56,13 +59,17 @@ class SpeedControllerTest {
   ros::Subscriber detection_sub_;
   ros::Publisher pub_brake_cmd_;
   ros::Publisher pub_speed_cmd_;
+  ros::Publisher pub_auto_drive_;
   ros::Timer timer_;
   SpeedTest sp_;
 
-  int8_t cnt_;
   cyber_msgs::speedcmd speed_cmd_;
   cyber_msgs::brakecmd brake_cmd_;
   double utm_x, utm_y, heading;
+
+  // control相关变量
+  bool auto_drive = false;
+  bool emergency_status = false;
 
   //---------参数服务相关变量------------
 
@@ -72,4 +79,5 @@ class SpeedControllerTest {
   void LocalizationCallback(const hycan_msgs::Localization& msg);
   void DectectionCallback(
       const hycan_msgs::DetectionResults& detection_result);
+  void TimerCallback(const ros::TimerEvent&);
 };
