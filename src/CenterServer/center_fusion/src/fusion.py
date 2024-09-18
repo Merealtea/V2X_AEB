@@ -7,8 +7,6 @@
 # TIME: 20:36:14
 '''
 
-# UDP
-
 import rospy
 import numpy as np
 import threading

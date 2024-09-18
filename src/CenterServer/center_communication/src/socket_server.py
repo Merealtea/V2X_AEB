@@ -7,7 +7,7 @@
 # TIME: 20:36:14
 '''
 
-# UDP
+# TCP
 
 import socket, sys, struct
 import rospy
@@ -61,7 +61,7 @@ class SocketServer:
                 client, addr = self.server.accept()
                 if addr in self.connected_client:
                     continue
-                rospy.loginfo(f"Connected to {addr}")
+                rospy.loginfo(f"Connected from {addr}")
                 self.connected_client[addr] = client
                 thread = threading.Thread(target=self.receive_from, args=(client, addr))
                 thread.start()
@@ -110,7 +110,7 @@ class SocketServer:
                     data += client.recv(count - len(data))
             
                 rospy.loginfo(f"Receive data length: {len(data)}")
-                rospy.loginfo(f"Time delay is {time.time()-send_timestamp}")
+                rospy.loginfo(f"Time delay is {time.time()-send_timestamp}s")
 
                 # Package the images and imu data into a ROS message
                 detection_results = DetectionResults()

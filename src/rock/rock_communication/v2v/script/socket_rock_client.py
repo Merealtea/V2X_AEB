@@ -65,8 +65,7 @@ class SocketClient:
             except Exception as e:
                 rospy.logwarn("Failed to connect to the server because : {}".format(e))
                 rospy.sleep(1)
-        rospy.loginfo("Connection from {} has been established.".format((self.target_host, self.target_port)))
-        rospy.loginfo('Socket Bind Success!')
+        rospy.loginfo("Connection to {} has been established.".format((self.target_host, self.target_port)))
         self._connected = True
 
     def pack_data(self, image_timestamp, send_timestamp, num_bboxes, idx, count, x, y, yaw):
