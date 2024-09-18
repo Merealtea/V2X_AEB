@@ -1,6 +1,0 @@
-{c_behind_velocity: 0.6, c_front_velocity: 0.8, dis_base: 4.0, dis_min: 4.0,dis_max: 8.5, dis_speed_factor: 0.5,
-  heading_cost_factor: 1.0, k_acc_filter: 2.0, k_acc_threshold: 0.15, k_behind_distance: 0.8,
-  k_brake_output: 3.5, k_curvature_factor: 5.0, k_feedforward_acc: 0.75, k_front_distance: 0.75,
-  k_speed_output: 60.0, k_start_threshold: 1.0, max_track_size: 1000, min_preview_distance_for_search: 3.5,
-  preview_distance_base: 3.55, preview_time: 1.8, speed_k1: 0.6, speed_k2: 0.6, steer_ratio: 892.55,
-  straight_threshold: 0.01, zero_brake_acc_threshold: -0.5, zero_brake_speed_threshold: 3.0,k_resmooth_threshold: 2.0}

@@ -1,8 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-  <arg name="vehicle_name" default="rock" />
-
-  <node pkg="control" type="vehicle_node" name="$(arg vehicle_name)_vehicle_node" output="screen">
-    <rosparam command="load" file="$(find control)/params/rock.yaml" />
-  </node>
-</launch>

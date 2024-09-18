@@ -79,8 +79,8 @@ def callback(lidar_msg, front_camera_msg, back_camera_msg, left_camera_msg, righ
     for key in cam_models:
         cam_points = cam_models[key].world2cam(lidar_points)
         depth = cam_points[0, :]
-        cam_points = cam_points[:, depth < 8]
-        depth = depth[depth < 8]
+        cam_points = cam_points[:, depth < 10]
+        depth = depth[depth < 10]
         depth = depth[depth > 0]
         image_points = cam_models[key].cam2image(cam_points)
 

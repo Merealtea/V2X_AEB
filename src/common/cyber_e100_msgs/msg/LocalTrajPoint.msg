@@ -1,9 +1,0 @@
-geometry_msgs/Point position
-geometry_msgs/Quaternion orientation
-float64 s
-float64 theta
-float64 kappa
-float64 kappa_prime
-float64 velocity
-float64 t
-int8 mode

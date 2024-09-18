@@ -77,3 +77,4 @@ if __name__ == "__main__":
     plt.savefig("trajdelay.png")
 
     print("mean delay is {}".format(np.mean(time_delay)))
+    print("std delay is {}".format(np.std(time_delay)))

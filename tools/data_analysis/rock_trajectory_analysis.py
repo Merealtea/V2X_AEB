@@ -5,7 +5,6 @@ from sensor_msgs.msg import Image
 import numpy as np
 import matplotlib.pyplot as plt
 from sensor_msgs.msg import NavSatFix, Imu
-from message_filters import ApproximateTimeSynchronizer, Subscriber
 from pyproj import Transformer
 import numpy as np
 import math
@@ -19,18 +18,24 @@ bounding_box = np.array([[length/2, width/2],
                             [-length/2, -width/2],
                             [-length/2, width/2],
                             [length/2, width/2],])
-    
-bounding_boxes = []
-yaws = []
-points = []
-i = 0
-max_frame =400
-min_x , min_y = 1e9, 1e9
-max_x, max_y = -1e9, -1e9
 
-RADIANS_PER_DEGREE = np.pi / 180
-DEGREES_PER_RADIAN = 180 / np.pi
-central_meridian = 120
+length = 0.3
+width = 0.3
+preson_bounding_box = np.array([[length, width/2],
+                            [length/2, -width/2],
+                            [-length/2, -width/2],
+                            [-length/2, width/2],
+                            [length/2, width/2],])
+    
+hycan_bboxes = []
+rock_bboxes = []
+detection_boxes = []
+
+hycan_image_process_time = []
+hycan_comm_time = []
+
+rock_image_process_time = []
+rock_comm_time = []
 
 last_gps = None
 
@@ -64,113 +69,86 @@ class KalmanFilter:
 
 kf = KalmanFilter()
 
-def callback(gps, imu):
-    global i, min_x, min_y, max_x, max_y, last_gps, kf, central_meridian
-    position = transformer.transform(gps.latitude, gps.longitude)
+idx = 0
+hycan_init_yaw = None
 
-    if last_gps is None:
-        last_gps = deepcopy(gps)
-        return
-    lon1 = last_gps.longitude * RADIANS_PER_DEGREE
-    lat1 = last_gps.latitude * RADIANS_PER_DEGREE
-    lon2 = gps.longitude * RADIANS_PER_DEGREE
-    lat2 = gps.latitude * RADIANS_PER_DEGREE
+def hycan_callback(msg):
+    global hycan_bboxes, detection_boxes, hycan_image_process_time, hycan_comm_time, hycan_init_yaw
+    hycan_x, hycan_y = msg.localization.utm_x, msg.localization.utm_y
+    hycan_yaw = msg.localization.heading
+    hycan_init_yaw = hycan_yaw
 
-    ca = compute_convergence_angle(gps.longitude, gps.latitude, central_meridian)
-    ca = - np.pi * 50/ 64
+    box = np.dot(bounding_box, np.array([[np.cos(hycan_yaw), -np.sin(hycan_yaw)],
+                            [np.sin(hycan_yaw), np.cos(hycan_yaw)]]).T)
+    box += np.array([hycan_x, hycan_y]).reshape(1, 2)  
+    hycan_bboxes.append(box)
 
-    dLon = lon2 - lon1
-    y = np.sin(dLon) * np.cos(lat2)
-    x = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) * np.cos(dLon)
-    gps_heading = np.arctan2(y, x)
+    person_bbox = np.dot(preson_bounding_box, np.array([[np.cos(hycan_yaw), -np.sin(hycan_yaw)],
+                            [np.sin(hycan_yaw), np.cos(hycan_yaw)]]).T)
+    person_bbox += np.array([hycan_x - 1, hycan_y + 2]).reshape(1, 2)
+    detection_boxes.append(person_bbox)
 
-    q0 = imu.orientation.w
-    q1 = imu.orientation.x
-    q2 = imu.orientation.y
-    q3 = imu.orientation.z
+    hycan_image_process_time.append(msg.sender.stamp.to_sec() - msg.image_stamp.to_sec())
+    hycan_comm_time.append(msg.reciever.stamp.to_sec() - msg.sender.stamp.to_sec())
 
-    imu_yaw = np.arctan2(2.0 * (q0 * q3 + q1 * q2), 1.0 - 2.0 * (q2 * q2 + q3 * q3))
+def rock_callback(msg):
+    global rock_bboxes , idx, rock_image_process_time, rock_comm_time
+    if idx > 3000 and idx < 3710:
+        rock_x, rock_y = msg.localization.utm_x, msg.localization.utm_y
+        rock_yaw = msg.localization.heading - np.pi / 2 + np.pi / 32
 
+        box = np.dot(bounding_box, np.array([[np.cos(rock_yaw), -np.sin(rock_yaw)],
+                                [np.sin(rock_yaw), np.cos(rock_yaw)]]).T)
+        box += np.array([rock_x, rock_y]).reshape(1, 2)  
+        rock_bboxes.append(box)
+        rock_comm_time.append(msg.reciever.stamp.to_sec() - msg.sender.stamp.to_sec())
+    rock_image_process_time.append(msg.sender.stamp.to_sec() - msg.image_stamp.to_sec())
     
-    corrected_heading =  imu_yaw + ca #+ gps_heading + ca - 
-
-    # imu_yaw = kf.x[0, 0]
-
-    yaw = corrected_heading 
-    
-    last_gps = deepcopy(gps)
-    i += 1
-
-    if i < 8500:
-        if min_x > position[0]:
-            min_x = position[0]
-        if min_y > position[1]:
-            min_y = position[1]
-        if max_x < position[0]:
-            max_x = position[0]
-        if max_y < position[1]:
-            max_y = position[1]
-        yaws.append(yaw)
-        # yaws[-1] = np.mean(yaws[-50:])
-        points.append(position)
-
-        rotation_matrix = np.array([[np.cos(yaw), -np.sin(yaw)],
-                            [np.sin(yaw), np.cos(yaw)]])
-    
-        rotated_box = np.dot(bounding_box, rotation_matrix.T)
-        rotated_box += np.array(position).reshape(1, 2)
-        bounding_boxes.append(rotated_box)
-            # import pdb pdb.set_trace()
-    
+    idx += 1
 
 
 if __name__ == "__main__":
     rospy.init_node('hycan_bag')
-    hycan_bag_path = "/mnt/pool1/2024-07-23-11-11-52.bag"
+    hycan_bag_path = "/mnt/pool1/V2X_AEB/data/2024-09-10_10-21-21.bag"
     
     # 打开两个rosbag文件
     bag = rosbag.Bag(hycan_bag_path, 'r')
 
-    gps_topic = '/Inertial/gps/fix'
-    heading_topic = '/Inertial/imu/data'
-    vel_topic = '/Inertial/gps/vel'
+    hycan_topic = '/hycan/detection_results'
+    rock_topic = '/rock/detection_results'
 
-     # 创建message_filters的Subscriber对象
-    subscribers = [Subscriber(gps_topic, NavSatFix),
-                   Subscriber(heading_topic, Imu)]
-    
-    # 创建ApproximateTimeSynchronizer对象
-    ts = ApproximateTimeSynchronizer(subscribers, 10, 0.1)
-    ts.registerCallback(callback)
 
     # 读取bag文件并触发callbacks
-    for topic, msg, t in bag.read_messages(topics=[gps_topic, heading_topic]):
-        for sub in subscribers:
-            if topic == sub.name:
-                sub.signalMessage(msg)
+    for topic, msg, t in bag.read_messages(topics=[hycan_topic, rock_topic]):
+            if topic == hycan_topic:
+                hycan_callback(msg)
+            elif topic == rock_topic:
+                rock_callback(msg)
 
     bag.close()
 
     fig, ax = plt.subplots()
     ax.set_aspect('equal', adjustable='box')
 
-    ax.set_ylim(min_y-10, max_y+10)        
-    ax.set_xticks(np.arange(min_x-10, max_x+10, 1))
-    ax.set_yticks(np.arange(min_y-10, max_y+10, 1))
-    
-    points= np.array(points)
-    # 绘制轨迹
-    plt.plot(points[:, 0], points[:, 1], label="Trajectory")
+    for box in hycan_bboxes:
+        # 绘制车辆包围盒
+        ax.plot(box[:, 0], box[:, 1], 'b')
 
-    # # 在每个点上绘制表示朝向的箭头
-    # for i in range(len(points)):
-    #     x, y = points[i]
-    #     angle = yaws[i]
-    #     # 使用箭头来表示朝向
-    #     dx = np.cos(angle) * 0.5  # 箭头的x分量
-    #     dy = np.sin(angle) * 0.5  # 箭头的y分量
-    #     plt.arrow(x, y, dx, dy, head_width=0.2, head_length=0.2, fc='r', ec='r')
-
-    for box in bounding_boxes:
+    for box in rock_bboxes:
+        # 绘制车辆包围盒
         ax.plot(box[:, 0], box[:, 1], 'r')
+    
+    for box in detection_boxes:
+        # 绘制车辆包围盒
+        ax.plot(box[:, 0], box[:, 1], 'g')
+
+    # 将x轴与y轴翻转
+    ax.invert_yaxis()
+    
     plt.savefig('bounding_box.png', dpi = 600)
+
+    print("hycan image process time mean is {}".format(np.mean(hycan_image_process_time)))
+    print("hycan comm time mean is {}".format(np.mean(hycan_comm_time)))
+
+    print("rock image process time mean is {}".format(np.mean(rock_image_process_time)))
+    print("rock comm time mean is {}".format(np.mean(rock_comm_time)))

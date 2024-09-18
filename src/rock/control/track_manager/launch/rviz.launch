@@ -1,3 +1,0 @@
-<launch>
-    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find track_manager)/rviz/pnc_test.rviz"/>
-</launch>

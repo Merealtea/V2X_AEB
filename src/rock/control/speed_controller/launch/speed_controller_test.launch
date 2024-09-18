@@ -1,9 +1,0 @@
-<!-- Starts up everything needed to simulate velocity control -->
-<launch>
-
-<!--	start speed control-->
-<node pkg="speed_controller" type="speed_controller_test" name="speed_controller_test" output="screen">
-	<rosparam file="$(find speed_controller)/params/rock.yaml" command="load" />
-</node>
-
-</launch>

@@ -1,50 +1,59 @@
 from copy import deepcopy
 import rosbag  
 import rospy
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import NavSatFix, CompressedImage
+from cyber_msgs.msg import Heading
 import numpy as np
 from cv_bridge import CvBridge
+from message_filters import ApproximateTimeSynchronizer, Subscriber
+
+bag_path = "/mnt/pool1/2024-09-11.bag"
+
+bag = rosbag.Bag(bag_path, 'r')
+gps_fix_topic = '/strong/fix'
+heading_topic = '/strong/heading'
+
+new_bag_path = "/mnt/pool1/new_bag.bag"
+new_bag = rosbag.Bag(new_bag_path, 'w')
+
+def camera_callback(msg1, msg2, msg3, msg4):
+    new_gps = NavSatFix()
+    new_heading = Heading()
+    new_bag.write(gps_fix_topic, new_gps, msg1.header.stamp)
+    new_bag.write(heading_topic, new_heading, msg1.header.stamp)
+    new_bag.write(front_camera_topic, msg1, msg1.header.stamp)
+    new_bag.write(back_camera_topic, msg2, msg2.header.stamp)
+    new_bag.write(right_camera_topic, msg3, msg3.header.stamp)
+    new_bag.write(left_camera_topic, msg4, msg4.header.stamp)
+
+    # cap.write(cv_image)
+
 
 if __name__ == "__main__":
     rospy.init_node('merge_bag')
-    hycan_bag_path = "/mnt/pool1/outside_parking/hycan/2024-08-01_09-34-15.bag"
-    new_hycan_bag_path = "/mnt/pool1/outside_parking/hycan/2024-08-01_09-34-15_send.bag"
-    # 打开两个rosbag文件
-    bag = rosbag.Bag(hycan_bag_path, 'r')
-    new_bag = rosbag.Bag(new_hycan_bag_path, 'w')
-    front_topic =  "/miivii_gmsl_ros/camera1/compressed"
-    back_topic = "/miivii_gmsl_ros/camera2/compressed"
-    right_topic = "/miivii_gmsl_ros/camera3/compressed"
-    left_topic = "/miivii_gmsl_ros/camera4/compressed"
+    front_camera_topic = "/miivii_gmsl_ros/camera1/compressed"
+    back_camera_topic = "/miivii_gmsl_ros/camera2/compressed"
+    right_camera_topic = "/miivii_gmsl_ros/camera3/compressed"
+    left_camera_topic = "/miivii_gmsl_ros/camera4/compressed"
 
-    bridge = CvBridge()
+    cam_1 = Subscriber(front_camera_topic, CompressedImage)
+    cam_2 = Subscriber(back_camera_topic, CompressedImage)
+    cam_3 = Subscriber(right_camera_topic, CompressedImage)
+    cam_4 = Subscriber(left_camera_topic, CompressedImage)
 
-    for topic, msg, t in bag.read_messages(topics=['/Hycan/processed_images']):
-        new_msg = deepcopy(msg)
-        recv_stamp = msg.header.stamp
-        send_stamp = msg.image_front.header.stamp
-        new_msg.header.stamp = send_stamp
-        new_msg.image_front.header.stamp = recv_stamp
-        new_bag.write('/Hycan/processed_images', new_msg, send_stamp)
-        front_image = np.frombuffer(msg.image_front.data, dtype=np.uint8).reshape((480, 640, 3))
-        back_image = np.frombuffer(msg.image_back.data, dtype=np.uint8).reshape((480, 640, 3))
-        left_image = np.frombuffer(msg.image_left.data, dtype=np.uint8).reshape((480, 640, 3))
-        right_image = np.frombuffer(msg.image_right.data, dtype=np.uint8).reshape((480, 640, 3))
-        front_image = bridge.cv2_to_imgmsg(front_image, encoding="bgr8")
-        back_image = bridge.cv2_to_imgmsg(back_image, encoding="bgr8")
-        left_image = bridge.cv2_to_imgmsg(left_image, encoding="bgr8")
-        right_image = bridge.cv2_to_imgmsg(right_image, encoding="bgr8")
-        
-        front_image.header.stamp = send_stamp
-        back_image.header.stamp = send_stamp
-        left_image.header.stamp = send_stamp
-        right_image.header.stamp = send_stamp
+    ts = ApproximateTimeSynchronizer([cam_1, cam_2, cam_3, cam_4], 10, 0.1)
 
-        new_bag.write(front_topic, front_image, send_stamp)
-        new_bag.write(back_topic, back_image, send_stamp)
-        new_bag.write(left_topic, left_image, send_stamp)
-        new_bag.write(right_topic, right_image, send_stamp)
-        print(f"Receive time: {recv_stamp}, Send time: {send_stamp}")
+    ts.registerCallback(camera_callback)
+
+    for topic, msg, t in bag.read_messages(topics=[front_camera_topic, back_camera_topic, right_camera_topic, left_camera_topic]):
+        if topic == front_camera_topic:
+            cam_1.signalMessage(msg)
+        elif topic == back_camera_topic:
+            cam_2.signalMessage(msg)
+        elif topic == right_camera_topic:
+            cam_3.signalMessage(msg)
+        elif topic == left_camera_topic:
+            cam_4.signalMessage(msg)
 
     bag.close()
     new_bag.close()

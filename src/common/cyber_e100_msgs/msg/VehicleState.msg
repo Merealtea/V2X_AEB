@@ -1,9 +1,0 @@
-Header header
-bool emergencyIsEnabled
-bool autoCanBeEnabled
-bool beAutoState
-bool vehicleCheckedIsOk
-bool taskEnabled
-int16 stacked
-int16 goodsCoding
-int16 workedMiles
