@@ -142,7 +142,6 @@ cd scripts/rock
 bash rock_launch.sh
 ```
 
-
 #### 合创车
 在合创车端xavier，运行以下命令，启动相机驱动：
 ```bash

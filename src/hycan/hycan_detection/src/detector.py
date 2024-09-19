@@ -19,19 +19,18 @@ from time import time
 import cv2
 
 class Detector:
-    def __init__(self, ckpt_path):
+    def __init__(self, config_path, ckpt_path):
         # Get the vehicle name from ROS parameter server
         rospy.init_node('hycan_detector', anonymous=True)
         self.vehicle = rospy.get_param('~vehicle')
         
         # load the detector
-        config = os.path.join(ckpt_path, 'mv_dfm_{}.yaml'.format(self.vehicle))
+        config = os.path.join(config_path, 'mv_dfm_{}.yaml'.format(self.vehicle))
         with open(config, 'r') as f:
             config = yaml.safe_load(f)
         self.detector = build_detector(config)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        ckpt_file = "/mnt/pool1/V2X_AEB/data/model_parameter/hycan_mv_focs3d.pth"
-        self.detector.load_state_dict(torch.load(ckpt_file))
+        self.detector.load_state_dict(torch.load(ckpt_path))
         self.detector.to(self.device)
         self.detector.eval()
 
@@ -81,8 +80,6 @@ class Detector:
         bbox = result['boxes_3d'].tensor.cpu().numpy()[:, :7]
 
         # Demo code
-        # bbox = [[1, -2, 0, 0.3, 0.3, 1.75, 0.5]]
-        # rospy.sleep(0.2) # simulate the inference time
 
         results = DetectionResults()
         for box in bbox:
@@ -119,5 +116,6 @@ if __name__ == '__main__':
     ws_path = package_path.split('hycan')[0]
 
     model_config_path = ws_path + 'common/Mono3d/configs/models'
-    Detector(model_config_path)
+    model_path = ws_path + '../data/model_parameter/hycan_mv_focs3d.pth'
+    Detector(model_config_path, model_path)
     rospy.spin()
