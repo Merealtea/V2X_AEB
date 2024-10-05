@@ -100,6 +100,9 @@ class SocketServer:
                     rospy.logwarn(f"Connection from {addr} has been lost.")
                     self.delete_client(addr)
                     return
+                
+                if header == b'':
+                    continue
 
                 image_timestamp, send_timestamp, num_bboxes, idx, count, x, y, yaw =\
                         struct.unpack(self.fmt, header) 
@@ -115,7 +118,7 @@ class SocketServer:
                 # Package the images and imu data into a ROS message
                 detection_results = DetectionResults()
                 if num_bboxes == 0:
-                    data = np.array([])
+                    continue
                 else:
                     data = np.ascontiguousarray(np.frombuffer(data, dtype=np.float32)).reshape(num_bboxes, -1)
 
@@ -134,6 +137,7 @@ class SocketServer:
                 detection_results.localization.utm_x = x   
                 detection_results.localization.utm_y = y
                 detection_results.localization.heading = yaw
+                detection_results.vehicle_id = vehicle
                 
                 # 记录接收到消息的时间
                 detection_results.sender.stamp = rospy.Time.from_sec(send_timestamp)

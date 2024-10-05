@@ -96,6 +96,7 @@ class Detector:
         results.num_boxes = len(bbox)
         results.localization = msg.localization
         results.image_stamp = msg.image_front.header.stamp
+        results.vehicle_id = self.vehicle
 
         rospy.loginfo("Inference time : {}".format(time() - st))
         # localization and time delay

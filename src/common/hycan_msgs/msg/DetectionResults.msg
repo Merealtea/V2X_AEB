@@ -2,6 +2,7 @@ Header sender
 Header reciever
 
 time image_stamp
+string vehicle_id
 
 # detection result
 Box3D[] box3d_array

@@ -1,1 +1,1 @@
-cd ../.. && catkin build hycan_msgs center_comm fusion
+cd ../.. && catkin build hycan_msgs center_comm fusion center_visualization

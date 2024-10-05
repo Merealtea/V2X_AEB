@@ -101,7 +101,7 @@ if __name__ == "__main__":
     ts = ApproximateTimeSynchronizer(subscribers, 10, 0.1)
     ts.registerCallback(callback)
 
-    # 读取bag文件并触发callbacks
+    # 读取bag文件并触发callbacks 
     for topic, msg, t in bag.read_messages(topics=[gps_topic, heading_topic]):
         for sub in subscribers:
             if topic == sub.name:

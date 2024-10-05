@@ -1,0 +1,8 @@
+<launch>
+  <node pkg="center_visualization" type="visualization.py" name="center_visualization" output="screen">
+  </node>
+
+  <!-- <node pkg="detection" type="detector.py" name="rock_detector" output="screen">
+    <param name="vehicle" value="rock" />
+  </node> -->
+</launch>
