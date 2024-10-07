@@ -20,6 +20,9 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
+set(OpenCV_DIR "/usr/share/opencv4")
+find_package(OpenCV 4 REQUIRED)
+message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures

@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <sensor_msgs/CompressedImage.h>
+#include <opencv2/opencv.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <message_filters/subscriber.h>
@@ -32,6 +33,8 @@ public:
         sync_->setMaxIntervalDuration(ros::Duration(0.1));  // 设置最大时间间隔
         // 发布自定义消息
         pub_ = nh_.advertise<hycan_msgs::FourImages>("hycan_processed_images", 1);
+        // print opencv version
+        ROS_INFO("OpenCV version: %s", CV_VERSION);
     }
 
     void imageCallback(const sensor_msgs::CompressedImage::ConstPtr& msg1, // front
@@ -52,14 +55,15 @@ public:
         // 处理每个压缩图像
         for (int i = 0; i < 4; i++) {
             cv::Mat cv_image = cv::imdecode(cv::Mat(msgs[i]->data), cv::IMREAD_COLOR);
-            original_width = cv_image.rows;
-            original_height = cv_image.cols;
-
+            original_height = cv_image.rows;
+            original_width = cv_image.cols;
+          
             // 转换图像为浮点类型，便于归一化操作
             cv_image.convertTo(cv_image, CV_32F);
 
             // 1. 先resize
-            cv::resize(cv_image, cv_image, cv::Size(640, 480));  // 缩放到640x480
+            cv::resize(cv_image, cv_image, cv::Size(640, 480), 0, 0, cv::INTER_AREA);  // 缩放到640x480
+
 
             // 2. 归一化
             cv::Mat mean_mat(cv_image.size(), cv_image.type(), img_mean);

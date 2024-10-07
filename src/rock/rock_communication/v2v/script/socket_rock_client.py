@@ -113,7 +113,12 @@ class SocketClient:
         while not rospy.is_shutdown():
             try:
                 if self._connected:
-                    fusion_timestamp, send_timestamp, num_bboxes, _, count, _, _, _ = struct.unpack(self.fmt, self._socket.recv(self.fmt_length))
+                    header = self._socket.recv(self.fmt_length)
+                    if len(header) == 0:
+                        rospy.INFO("No data received.")
+                        rospy.sleep(0.5)
+                        continue
+                    fusion_timestamp, send_timestamp, num_bboxes, _, count, _, _, _ = struct.unpack(self.fmt, header)
                     fusion_data = b''
                     while len(fusion_data) < count:
                         fusion_data += self._socket.recv(count - len(fusion_data))
