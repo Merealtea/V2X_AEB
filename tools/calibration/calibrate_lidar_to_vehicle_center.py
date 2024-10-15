@@ -31,15 +31,41 @@ vehicle_center = np.array([16.3269, 14.4592, 0]) # hycan
 center_to_rear_center = np.array([1.426, 0.15, 0.0])
 vehicle_rot = np.array([0, 0, -0.999185, 0.040353])
 
+vehicle_center = np.array([17.4442, 14.4884, 0]) # rock
+vehicle_rot = np.array([0, 0, -0.999677, 0.02543])
+center_to_rear_center = np.array([1.2975, 0, 0])
 
+rock_lidar_calib = np.array([[1.0, 0.0, 0.0, 0],
+                            [0.0, 1.0, 0.0, 0],
+                            [0.0, 0.0, 1.0, 1.7],
+                            [0.0, 0.0, 0.0, 1.0]])
+np.savetxt("rock_lidar_calib.csv", rock_lidar_calib, delimiter=",")
 
-lidar_calib = np.array([[0.0, -1.0, 0.0, -0.1],
-                        [-1.0, 0.0, 0.0, 0.35],
-                        [0.0, 0.0, -1.0, 1.83],
+rock_rear = np.array([[1.0, 0.0, 0.0, 1.2975],
+                    [0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0]])
+                    
+
+np.savetxt("rock_rear.csv", rock_rear, delimiter=",")
+
+hycan_rear = np.array([[1.0, 0.0, 0.0, 1.426],
+                    [0.0, 1.0, 0.0, 0.15],
+                    [0.0, 0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0]])
+
+np.savetxt("hycan_rear.csv", hycan_rear, delimiter=",")
+                       
+
+lidar_calib = np.array([[0.0, 1.0, 0.0, -0.1],
+                        [1.0, 0.0, 0.0, 0.35],
+                        [0.0, 0.0, 1.0, 1.83],
                         [0.0, 0.0, 0.0, 1.0]])
 euler = np.array([89.3, 0.7, 179.5])
 rotation = R.from_euler('zyx', euler, degrees=True)
 lidar_calib[:3, :3] = rotation.as_matrix()
+# Saveth the calibration matrix as csv file
+np.savetxt("lidar_calib.csv", lidar_calib, delimiter=",")
 # import pdb; pdb.set_trace()
 
 lidar_bag = rosbag.Bag(lidar_bag_path, 'r')

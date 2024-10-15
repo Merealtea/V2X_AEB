@@ -1,6 +1,7 @@
 import numpy as np
 import time
 from filterpy.kalman import KalmanFilter
+from copy import deepcopy
 
 def linear_assignment(cost_matrix):
   try:
@@ -12,13 +13,13 @@ def linear_assignment(cost_matrix):
     x, y = linear_sum_assignment(cost_matrix)
     return np.array(list(zip(x, y)))
   
-def iou_batch(dt_annos_part, gt_annos_part):
+def iou_batch_rot(dt_annos_part, gt_annos_part):
     """
     From SORT: Computes IOU between two bboxes in the form [x1,y1,x2,y2]
     """
     loc = gt_annos_part[:,:2]
     dims = gt_annos_part[:, 3:5]
-    rots = gt_annos_part[:,6:7]
+    rots = gt_annos_part[:,6:7] % (2 * np.pi)
     gt_boxes = np.concatenate([loc, dims, rots],
                                 axis=1)
     loc = dt_annos_part[:,:2]
@@ -29,10 +30,31 @@ def iou_batch(dt_annos_part, gt_annos_part):
     
     overlap_part = bev_box_overlap(gt_boxes,
                                     dt_boxes).astype(np.float64)
-    # print("dt_boxes is ", dt_boxes)
-    # print("gt_boxes is ", gt_boxes)
-    # print("overlap is ", overlap_part)
+    print("dt_boxes is ", dt_boxes)
+    print("gt_boxes is ", gt_boxes)
+    print("overlap is ", overlap_part)
     return overlap_part.T
+
+def iou_batch(bb_test, bb_gt):
+  """
+  From SORT: Computes IOU between two bboxes in the form [x1,y1,x2,y2]
+  """
+  bb_gt = np.expand_dims(bb_gt, 0)
+  bb_test = np.expand_dims(bb_test, 1)
+  
+  xx1 = np.maximum(bb_test[..., 0] - bb_test[..., 3] / 2,
+                    bb_gt[..., 0] - bb_gt[..., 3] / 2)
+  yy1 = np.maximum(bb_test[..., 1] - bb_test[..., 4] / 2,
+                   bb_gt[..., 1] - bb_gt[..., 4] / 2)
+  xx2 = np.minimum(bb_test[..., 0] + bb_test[..., 3] / 2, 
+                   bb_gt[..., 0] + bb_gt[..., 3] / 2)
+  yy2 = np.minimum(bb_test[..., 1 ] + bb_test[..., 4] / 2,
+                   bb_gt[..., 1] + bb_gt[..., 4] / 2)
+  w = np.maximum(0., xx2 - xx1)
+  h = np.maximum(0., yy2 - yy1)
+  wh = w * h
+  o = wh / (bb_test[..., 3] * bb_test[..., 4] + bb_gt[..., 3] *  bb_gt[..., 4] - wh)                                             
+  return(o)  
 
 def bev_box_overlap(boxes, qboxes, criterion=-1):
     from rotate_iou import rotate_iou_gpu_eval
@@ -45,6 +67,17 @@ def convert_bbox_to_bev(bbox):
     The 2d bbox is in the form [x,y,w,h,theta]
   """
   x, y, l, w, theta = bbox[0], bbox[1], bbox[3], bbox[4], bbox[6]
+  min_width = 0.4
+  min_length = 0.2
+
+  if l < w:
+      # 3 is length, 2 is width
+      w = max(w, min_width)
+      l = max(l, min_length)
+  else:
+      w = max(w, min_length)
+      l = max(l, min_width)
+  
   return np.array([x, y, l, w, theta]).reshape((5, 1))
 
 class KalmanBoxTracker(object):
@@ -57,7 +90,7 @@ class KalmanBoxTracker(object):
     Initialises a tracker using initial bounding box.
     """
     #define constant velocity model
-    # x = [x,y, l, w, theta, dx, dy, dl, dw, dtheta]
+    # x = [x,y, l, w, theta, dx, dy, dtheta]
     # z = [x,y,l,w, theta]
     self.kf = KalmanFilter(dim_x=10, dim_z=5) 
     self.kf.R[2:,2:] *= 10.
@@ -69,18 +102,20 @@ class KalmanBoxTracker(object):
     self.height = bbox[5] 
 
     self.kf.x[:5] = convert_bbox_to_bev(bbox)
-    init_velocities = 2
+
+    self.kf.x[2:4] = max(self.kf.x[2], self.kf.x[3])
+    init_velocities = 0
     heading = bbox[6]
-    x_vel = init_velocities * np.cos(heading - np.pi/2)
-    y_vel = init_velocities * np.sin(heading - np.pi/2)
+    x_vel = init_velocities * np.cos(heading + np.pi)
+    y_vel = init_velocities * np.sin(heading + np.pi)
     self.kf.x[5] = x_vel
     self.kf.x[6] = y_vel
     self.time_since_update = 0
-    self.track_timestamp = timestamp
+    self.track_timestamp = timestamp # The real time stamp of the track
+    self.update_timestamp = time.time() # The time stamp of the last update
     self.id = KalmanBoxTracker.count
     KalmanBoxTracker.count += 1
     self.history = []
-    self.hits = 0
     self.age = 0
     self.hit_streak = 0
 
@@ -88,47 +123,56 @@ class KalmanBoxTracker(object):
     """
     Updates the state vector with observed bbox.
     """
-    self.hits += 1
     self.hit_streak += 1
     td = timestamp - self.track_timestamp
     self.time_since_update = 0
-    self.kf.F = np.array([[1,0,0,0,0,td,0,0,0,0],
-                          [0,1,0,0,0,0,td,0,0,0],
-                          [0,0,1,0,0,0,0,td,0,0],
-                          [0,0,0,1,0,0,0,0,td,0],  
-                          [0,0,0,0,1,0,0,0,0,td],
-                          [0,0,0,0,0,1,0,0,0,0],
-                          [0,0,0,0,0,0,1,0,0,0],
-                          [0,0,0,0,0,0,0,1,0,0],
-                          [0,0,0,0,0,0,0,0,1,0],
-                          [0,0,0,0,0,0,0,0,0,1]])
-    self.kf.update(convert_bbox_to_bev(bbox))
+
+    H = np.array([[1,0,0,0,0,td,0,0,0,0],
+                  [0,1,0,0,0,0,td,0,0,0],    
+                  [0,0,1,0,0,0,0,td,0,0],
+                  [0,0,0,1,0,0,0,0,td,0],
+                  [0,0,0,0,1,0,0,0,0,td]])
+    self.kf.update(convert_bbox_to_bev(bbox), H=H)
     self.track_timestamp = timestamp
+    self.update_timestamp = time.time()
 
   def predict(self, timestamp):
     """
     Advances the state vector and returns the predicted bounding box estimate.
     """
     td = timestamp - self.track_timestamp
-    self.kf.H = np.array([[1,0,0,0,0,td,0,0,0,0],
-                          [0,1,0,0,0,0,td,0,0,0],    
-                          [0,0,1,0,0,0,0,td,0,0],
-                          [0,0,0,1,0,0,0,0,td,0],
-                          [0,0,0,0,1,0,0,0,0,td]])
-    self.kf.predict()
-    self.age += td
+    F = np.array([[1,0,0,0,0,td,0,0,0,0],
+                  [0,1,0,0,0,0,td,0,0,0],
+                  [0,0,1,0,0,0,0,td,0,0],
+                  [0,0,0,1,0,0,0,0,td,0],  
+                  [0,0,0,0,1,0,0,0,0,td],
+                  [0,0,0,0,0,1,0,0,0,0],
+                  [0,0,0,0,0,0,1,0,0,0],
+                  [0,0,0,0,0,0,0,1,0,0],
+                  [0,0,0,0,0,0,0,0,1,0],
+                  [0,0,0,0,0,0,0,0,0,1]])
+    self.kf.predict(F= F)
     if(self.time_since_update>0):
       self.hit_streak = 0
     self.time_since_update += td
     self.track_timestamp = timestamp
+    self.update_timestamp = time.time()
     return self.kf.x[:5]
 
   def get_state(self):
     """
     Returns the current bounding box estimate.
     """
-    return self.kf.x[:5].reshape((1,5))
-  
+    x = self.kf.x[:5].reshape((5, 1))
+    new_x = np.zeros((7, 1))
+    new_x[:2] = x[:2]
+    new_x[2] = self.center_z
+    new_x[3:5] = x[2:4]
+    new_x[5] = self.height
+    new_x[6] = x[4]
+    return new_x
+
+
   def predict_without_update(self, timestamp):
     """
     Advances the state vector without updating.
@@ -139,10 +183,14 @@ class KalmanBoxTracker(object):
                   [0,0,1,0,0,0,0,td,0,0],
                   [0,0,0,1,0,0,0,0,td,0],
                   [0,0,0,0,1,0,0,0,0,td]])
-
-    predict_x = self.kf.x + np.dot(H, self.kf.z) 
-    predict_x = [predict_x[0], predict_x[1], self.center_z, predict_x[2], predict_x[3], self.height, predict_x[4]]
-    return np.array(predict_x).reshape((1,7))
+    predict_x = np.dot(H, self.kf.x) 
+    new_predcit_x = np.zeros((7, 1))
+    new_predcit_x[:2] = predict_x[:2]
+    new_predcit_x[2] = self.center_z
+    new_predcit_x[3:5] = predict_x[2:4]
+    new_predcit_x[5] = self.height
+    new_predcit_x[6] = predict_x[4]
+    return new_predcit_x
 
 def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
   """
@@ -154,7 +202,9 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
     return np.empty((0,2),dtype=int), np.arange(len(detections)), np.empty((0,5),dtype=int)
 
   iou_matrix = iou_batch(detections, trackers)
-  print(iou_matrix)
+  print("IOU matrix is ", iou_matrix)
+  if iou_matrix.max() > 0 or iou_matrix.min() < 0:
+    print(detections, trackers)
 
   if min(iou_matrix.shape) > 0:
     a = (iou_matrix > iou_threshold).astype(np.int32)
@@ -191,7 +241,7 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
 
   
 class Sort(object):
-  def __init__(self, vehicle_id, localization, max_age=1, min_hits=3, iou_threshold=0.01):
+  def __init__(self, vehicle_id, localization, max_age=1, min_hits=3, iou_threshold=0.1):
     """
      Every vehicle has its own SORT tracker
     """
@@ -219,7 +269,10 @@ class Sort(object):
     # get predicted locations from existing trackers.
     trks = np.zeros((len(self.trackers), 7))
     to_del = []
-    ret = []
+    updated_res = {}
+    track_res = {}
+    res_dets = deepcopy(dets)
+    self.frame_count += 1
     for t, trk in enumerate(trks):
       pos = self.trackers[t].predict(det_timestamp)
       # prediction is in the form [x,y,s,r, yaw] in bev view
@@ -234,25 +287,24 @@ class Sort(object):
     # update matched trackers with assigned detections
     for m in matched:
       self.trackers[m[1]].update(dets[m[0], :], det_timestamp)
+      updated_res[self.trackers[m[1]].id] = res_dets[m[0], :]
 
     # create and initialise new trackers for unmatched detections
     for i in unmatched_dets:
         trk = KalmanBoxTracker(dets[i,:], det_timestamp)
         self.trackers.append(trk)
+        updated_res[trk.id] = res_dets[i, :]
+        print("New tracker is created")
     i = len(self.trackers)
     for trk in reversed(self.trackers):
-        d = trk.get_state()[0]
-        if (trk.time_since_update < 1) and (trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits):
-          ret.append(np.concatenate((d,[trk.id+1])).reshape(1,-1)) # +1 as MOT benchmark requires positive
+        print("hit times is ", trk.hit_streak)
         i -= 1
         # remove dead tracklet
-        print("trk.time_since_update is ", trk.time_since_update)
         if(trk.time_since_update > self.max_age):
           self.trackers.pop(i)
-    self.frame_count += 1
-    if(len(ret)>0):
-      return np.concatenate(ret)
-    return np.empty((0,5))
+        elif trk.hit_streak >= self.min_hits:
+          track_res[trk.id] = trk.get_state().reshape((7, 1))
+    return updated_res, track_res
 
   def predict(self, timestamp):
     """
@@ -260,6 +312,7 @@ class Sort(object):
     """
     predcitions = {}
     for tracker in self.trackers:
-        position = tracker.predict_without_update(timestamp)
-        predcitions[tracker.id] = position
+        if timestamp - tracker.update_timestamp < self.max_age:
+          position = tracker.predict_without_update(timestamp)
+          predcitions[tracker.id] = position
     return predcitions

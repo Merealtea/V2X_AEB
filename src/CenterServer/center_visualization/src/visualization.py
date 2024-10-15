@@ -4,6 +4,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 from geometry_msgs.msg import Point, Quaternion
 import tf.transformations as tf
 import os
+from numpy import cos, sin
 
 def create_marker(id, position, orientation, scale, color=(0.0, 1.0, 0.0, 1.0)):
     marker = Marker()
@@ -24,6 +25,64 @@ def create_marker(id, position, orientation, scale, color=(0.0, 1.0, 0.0, 1.0)):
 
     return marker
 
+def create_arrow_marker(id,x,y,yaw, length, frame_id="world"):
+    marker = Marker()
+    marker.header.frame_id = frame_id
+    marker.type = marker.ARROW
+    marker.action = marker.ADD
+    marker.id = id
+
+    # 起点和终点设置
+    start_point = Point()
+    start_point.x = x
+    start_point.y = y
+    start_point.z = 0.0
+
+    end_point = Point()
+    end_point.x = x + length * cos(yaw)
+    end_point.y = y + length * sin(yaw)
+    end_point.z = 0.0
+
+    marker.points.append(start_point)
+    marker.points.append(end_point)
+
+    quaternion = tf.quaternion_from_euler(0, 0, 0)
+    marker.pose.orientation = Quaternion(*quaternion)
+
+    # 设置箭头的颜色和透明度
+    marker.color.r = 1.0
+    marker.color.g = 0.0
+    marker.color.b = 0.0
+    marker.color.a = 1.0
+
+    # 设置箭头的尺度
+    marker.scale.x = 0.1  # 箭头杆的宽度
+    marker.scale.y = 0.2  # 箭头头部的宽度
+    marker.scale.z = 0.0  # 2D箭头，不需要Z轴尺度
+
+    return marker
+
+def create_text_marker(id, text, x, y, z, frame_id="world"):
+    text_marker = Marker()
+    text_marker.id = id
+    text_marker.header.frame_id = frame_id
+    text_marker.header.stamp = rospy.Time.now()
+    text_marker.type = Marker.TEXT_VIEW_FACING
+    text_marker.action = Marker.ADD
+    text_marker.pose.position.x = x
+    text_marker.pose.position.y = y
+    text_marker.pose.position.z = z
+    text_marker.scale.z = 0.3  # Height of the text
+
+    text_marker.color.r = 1.0
+    text_marker.color.g = 1.0
+    text_marker.color.b = 1.0
+    text_marker.color.a = 1.0  # Opacity
+
+    text_marker.text = text
+
+    return text_marker
+
 class center_visualization:
     def __init__(self):
         rospy.init_node('center_visualization', anonymous=True)
@@ -35,11 +94,7 @@ class center_visualization:
         config_path = os.path.abspath(__file__).split('CenterServer')[0] + '/common/config/center_vis_config.rviz'
         os.system(f'rosrun rviz rviz -d {config_path}')
 
-
-
     def original_detection_callback(self, msg):
-
-        vehicle_bbox = MarkerArray()
         vehicle_localization = msg.localization
         x, y, z = vehicle_localization.utm_x, \
             vehicle_localization.utm_y, \
@@ -47,32 +102,47 @@ class center_visualization:
         if self.init_position is None:
             self.init_position = (x, y)
         person_markers = MarkerArray()
+        num = len(msg.box3d_array)
         for i, box in enumerate(msg.box3d_array):
+            id = 0
+            id = box.id
             x, y, z = box.center_x, box.center_y, box.center_z
             x -= self.init_position[0]; y -= self.init_position[1]
             heading = box.heading
             height, width, length = box.height, box.width, box.length
             if width > 2:
+                continue
                 color = (1.0, 0.0, 0.0, 0.8)
             else:
                 color = (0.0, 1.0, 0.0, 0.8)
             person_marker = create_marker(i + 1, (x, y, z), tf.quaternion_from_euler(0, 0, heading), (width, length, height), color=color)
+            person_arrow = create_arrow_marker(i + num + 1, x, y, heading, 1.0)
             person_markers.markers.append(person_marker)
+            person_markers.markers.append(person_arrow)
+            print("id: ", id)
+            if id != 0:
+                person_id = create_text_marker(i + 2 * num + 1, str(id), x, y, z + height / 2 + 0.1)
+                person_markers.markers.append(person_id)
         
         # merge the two markers
-        vehicle_bbox.markers.extend(person_markers.markers)
-        self.original_pub.publish(vehicle_bbox)
-        rospy.loginfo("Visualization for original results published with {} boxes".format(len(vehicle_bbox.markers)))
+        self.original_pub.publish(person_markers)
+        rospy.loginfo("Visualization for original results published with {} boxes".format(len(person_markers.markers)))
 
     def fusion_detection_callback(self, msg):
-
         person_markers = MarkerArray()
-        for i, box in enumerate(msg.boxes):
+        num = len(msg.box3d_array)
+        for i, box in enumerate(msg.box3d_array):
+            id = box.id
             x, y, z = box.center_x, box.center_y, box.center_z
+            x -= self.init_position[0]; y -= self.init_position[1]
             heading = box.heading
             height, width, length = box.height, box.width, box.length
             person_marker = create_marker(i + 1, (x, y, z), tf.quaternion_from_euler(0, 0, heading), (width, length, height), color=(0.0, 0.0, 1.0, 0.8))
+            person_arrow = create_arrow_marker(i + 1 + num, x, y, heading, 1.0)
+            person_id = create_text_marker(i +1 + 2 * num , str(id), x, y, z + height / 2 + 0.1)
             person_markers.markers.append(person_marker)
+            # person_markers.markers.append(person_arrow)
+            person_markers.markers.append(person_id)
 
         self.fusion_pub.publish(person_markers)
         rospy.loginfo("Fusion results published with {} boxes".format(len(person_markers.markers)))

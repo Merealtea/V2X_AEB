@@ -8,7 +8,7 @@ from hycan_msgs.msg import DetectionResults, Box3D
 
 node = rospy.init_node('bbox_to_msg', anonymous=True)
 
-bbox_file_dir = "/mnt/pool1/catkin_livox_multi/bbox2024-06-25-21-47-20"
+bbox_file_dir = "/mnt/pool1/catkin_livox_multi/bbox2024-10-12-11-15-01"
 box_files = os.listdir(bbox_file_dir)
 box_stamp = np.array(sorted([float(box_file.split('_')[-1].split('.txt')[0]) for box_file in box_files]))
 time_diff = None
@@ -71,15 +71,15 @@ def callback(msg):
 
     min_diff, min_idx = np.min(np.abs(box_stamp - image_stamp)), np.argmin(np.abs(box_stamp - image_stamp))
     bboxes = []
-    if min_diff > 0.03:
-         bboxes = []
+    if i >= len(box_stamp): #min_diff > 0.05:
+        return # bboxes = []
     else:
-        with open(os.path.join(bbox_file_dir, "{:.6f}.txt".format(box_stamp[min_idx] - time_diff)), 'rb') as f:
+        with open(os.path.join(bbox_file_dir, "{:.6f}.txt".format(box_stamp[i] - time_diff)), 'rb') as f:
             for line in f:
                 # 去除末尾的换行符并输出
                 line = line.strip().decode('utf-8')
                 bbox = [float(str(num)) for num in line.split(" ")]
-                if bbox[3] < 0.15 or bbox[4] < 0.15 or bbox[5] < 0.5:
+                if bbox[5] < 1 or bbox[3] > 0.7 or bbox[4] > 0.7:
                     continue
                 bboxes.append(bbox)
 
@@ -113,6 +113,8 @@ def callback(msg):
         box_msg.heading = box[6]
         new_msg.box3d_array.append(box_msg)
     new_msg.num_boxes = len(bboxes) 
+    new_msg.image_stamp = rospy.Time.from_sec(box_stamp[i])
+    i += 1
     new_bag.write("detection_results", new_msg, msg.reciever.stamp)
 
 # import pdb; pdb.set_trace()

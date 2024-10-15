@@ -268,6 +268,8 @@ def devRotateIoUEval(rbox1, rbox2, criterion=-1):
     area2 = rbox2[2] * rbox2[3]
     area_inter = inter(rbox1, rbox2)
     if criterion == -1:
+        if area1 + area2 - area_inter < area_inter:
+            print("error")
         return area_inter / (area1 + area2 - area_inter)
     elif criterion == 0:
         return area_inter / area1
