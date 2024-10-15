@@ -32,8 +32,6 @@ class SocketClient:
         self.get_fmt_length()
 
         self.fusion_pub = rospy.Publisher('fusion_results', DetectionResults, queue_size=10)
-        thread = threading.Thread(target=self._recieve_results)
-        thread.start()
 
     def __del__(self):
         if hasattr(self, '_socket'):
@@ -64,8 +62,9 @@ class SocketClient:
                 rospy.logwarn("Failed to connect to the server because : {}".format(e))
                 rospy.sleep(1)
         rospy.loginfo("Connection to {} has been established.".format((self.target_host, self.target_port)))
-        
-        self._connected = True
+        thread = threading.Thread(target=self._recieve_results)
+        thread.start()
+
 
     def pack_data(self, image_timestamp, send_timestamp, num_bboxes, idx, count, x, y, yaw):
         # 假设我们只关心IMU的orientation和angular_velocity以及GPS的latitude和longitude
@@ -112,7 +111,12 @@ class SocketClient:
         while not rospy.is_shutdown():
             try:
                 if self._connected:
-                    fusion_timestamp, send_timestamp, num_bboxes, _, count, _, _, _ = struct.unpack(self.fmt, self._socket.recv(self.fmt_length))
+                    header = self._socket.recv(self.fmt_length)
+                    if len(header) == 0:
+                        rospy.loginfo("No data received.")
+                        rospy.sleep(0.5)
+                        continue
+                    fusion_timestamp, send_timestamp, num_bboxes, _, count, _, _, _ = struct.unpack(self.fmt, header)
                     fusion_data = b''
                     while len(fusion_data) < count:
                         fusion_data += self._socket.recv(count - len(fusion_data))

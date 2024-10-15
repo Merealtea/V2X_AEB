@@ -10,7 +10,7 @@ __pycache__/
 *.jpg
 *.png
 *.pth
-# *.t7
+model_ckpt/
 *.pyc
 *.mp4
 *.gif

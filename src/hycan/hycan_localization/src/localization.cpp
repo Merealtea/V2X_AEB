@@ -27,7 +27,7 @@ public:
 
     void localization_callback(const sensor_msgs::NavSatFix::ConstPtr& gps_msg,
                                  const cyber_msgs::Heading::ConstPtr& heading_msg) {
-
+        double st = ros::Time::now().toSec();
         convert_to_utm(*gps_msg);
         double delta_lon = (gps_msg->longitude - central_meridian) * RADIANS_PER_DEGREE;
         double convergence_angle = delta_lon * sin(gps_msg->latitude * RADIANS_PER_DEGREE);
@@ -43,6 +43,7 @@ public:
 
         localization_msg.header = gps_msg.get()->header;
         pub_.publish(localization_msg);
+        ROS_INFO("Published UTM Localization, Process Time: %6f", (ros::Time::now().toSec() - st));
     }
 
     void convert_to_utm(const sensor_msgs::NavSatFix& gps) {

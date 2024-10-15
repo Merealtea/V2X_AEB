@@ -7,6 +7,7 @@ import yaml
 from hycan_msgs.msg import FourImages, Box3D, DetectionResults
 import sys
 import os
+import cv2
 # Add the path to the 'src' directory (parent of common and centerserver)
 src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(src_path)
@@ -16,7 +17,9 @@ from core.bbox.structures.lidar_box3d import LiDARInstance3DBoxes
 import torch
 import rospkg
 from time import time
-import cv2
+from common.Mono3d.tools.inference_test import TRTModel
+from pycuda import driver as cuda
+import pycuda.autoinit
 
 class Detector:
     def __init__(self, config_path, ckpt_path):
@@ -28,43 +31,63 @@ class Detector:
         config = os.path.join(config_path, 'mv_dfm_{}.yaml'.format(self.vehicle))
         with open(config, 'r') as f:
             config = yaml.safe_load(f)
-        self.detector = build_detector(config)
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.detector.load_state_dict(torch.load(ckpt_path))
-        self.detector.to(self.device)
-        self.detector.eval()
-
-        self.height = 480
-        self.width = 640
+        
+        self.use_trt = True
+        if not self.use_trt:
+            self.detector = build_detector(config)
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.detector.load_state_dict(torch.load(ckpt_path))
+            self.detector.to(self.device)
+            self.detector.eval()
+            rospy.loginfo("Pytorch model is loaded")
+        else:
+            trt_path = ckpt_path.replace('.pth', '.engine')
+            self.cfx = cuda.Device(0).make_context()
+            self.detector = TRTModel(trt_path)
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            rospy.loginfo("TensorRT model is loaded")
 
         # initialze the subscriber
         rospy.Subscriber('{}_processed_images'.format(self.vehicle), FourImages, self.detect)
         self.pub = rospy.Publisher('{}_detection_results'.format(self.vehicle), DetectionResults, queue_size=10)
+        rospy.loginfo("Detector is ready")
 
-    def to_tensor(self, img_msg, device):
+    def __del__(self):
+        if self.use_trt:
+            self.cfx.pop()
+
+    def to_tensor(self, img_msg):
+        if self.use_trt:
+            return np.array(img_msg.data, dtype=np.float32)\
+                    .reshape((img_msg.height, img_msg.width, 3)).transpose(2, 0, 1)
         return torch.FloatTensor(
             np.array(img_msg.data, dtype=np.float32)
-                .reshape((3, self.height, self.width))).to(device)
+                .reshape((img_msg.height, img_msg.width, 3)).transpose(2, 0, 1)).to(self.device)
 
     def detect(self, msg):
         # start time
         st = time()
+        rospy.loginfo("Received hycan images")
 
         # get the images
-        image_front = self.to_tensor(msg.image_front, self.device)
-        image_back = self.to_tensor(msg.image_back, self.device)
-        image_left = self.to_tensor(msg.image_left, self.device)
-        image_right = self.to_tensor(msg.image_right, self.device)
+        image_front = self.to_tensor(msg.image_front)
+        image_back = self.to_tensor(msg.image_back)
+        image_left = self.to_tensor(msg.image_left)
+        image_right = self.to_tensor(msg.image_right)
 
         # turn the images into tensor
-        images = torch.stack([image_front, image_back, image_left, image_right]).unsqueeze(0)
-        rospy.loginfo("Images shape: {}".format(images.shape))
+        if self.use_trt:
+            images = np.expand_dims(np.stack([image_front, image_back, image_left, image_right]), axis=0)
+        else:
+            images = torch.stack([image_front, image_back, image_left, image_right]).unsqueeze(0)
+        rospy.loginfo("Images shape: {}, shape without pad is {}".format(images.shape, (msg.height, msg.width, 3)))
+        rospy.loginfo("Time for image processing: {}".format(time() - st))
         img_metas = [
             dict(
-                img_shape=[(self.height, self.width, 3)] * 4,
+                img_shape=[(msg.height, msg.width, 3)] * 4,
                 ori_shape=[(msg.height, msg.width, 3)] *4,
-                pad_shape=[(self.height, self.width, 3)] * 4,
-                scale_factor=np.array([0.5, 0.5, 0.5, 0.5], dtype=np.float32),
+                pad_shape=[(msg.image_front.height, msg.image_front.width, 3)] * 4,
+                scale_factor=torch.FloatTensor([msg.ratio, msg.ratio]),
                 flip=False,
                 keep_ratio=True,
                 num_views = 4,
@@ -76,11 +99,20 @@ class Detector:
         ]
         
         # detect the objects
-        result = self.detector(images, img_metas, return_loss=False)[0]
-        bbox = result['boxes_3d'].tensor.cpu().numpy()[:, :7]
+        if not self.use_trt:
+            with torch.no_grad():
+                result = self.detector(images, img_metas, return_loss=False)[0]
+        else:
+            self.cfx.push()
+            result = self.detector(images, img_metas, return_loss=False)[0]
+            self.cfx.pop()
+
+        if hasattr(result['boxes_3d'], 'tensor'):
+            bbox = result['boxes_3d'].tensor.cpu().numpy()[:, :7]
+        else:
+            bbox = result['boxes_3d'].numpy()[:, :7]
 
         # Demo code
-
         results = DetectionResults()
         for box in bbox:
             box_msg = Box3D()
@@ -93,12 +125,13 @@ class Detector:
             box_msg.heading = box[6]
 
             results.box3d_array.append(box_msg)
+
         results.num_boxes = len(bbox)
         results.localization = msg.localization
         results.image_stamp = msg.image_front.header.stamp
         results.vehicle_id = self.vehicle
 
-        rospy.loginfo("Inference time : {}".format(time() - st))
+        rospy.loginfo("Inference time : {}, detection results number is {}".format(time() - st, results.num_boxes))
         # localization and time delay
         localization = (msg.localization.utm_x, msg.localization.utm_y,msg.localization.heading)
         rospy.loginfo("Localization: {}".format(localization))
@@ -117,6 +150,6 @@ if __name__ == '__main__':
     ws_path = package_path.split('hycan')[0]
 
     model_config_path = ws_path + 'common/Mono3d/configs/models'
-    model_path = ws_path + '../data/model_parameter/hycan_mv_focs3d.pth'
-    Detector(model_config_path, model_path)
+    model_ckpt_path =  ws_path + '../model_ckpt/hycan_mv_fcos3d.pth'
+    Detector(model_config_path, model_ckpt_path)
     rospy.spin()
