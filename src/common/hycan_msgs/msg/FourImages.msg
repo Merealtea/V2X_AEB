@@ -7,6 +7,9 @@ Localization localization
 uint16 height
 uint16 width
 
+# ratio of image
+float32 ratio
+
 # Images
 Image image_front
 Image image_back

@@ -49,6 +49,9 @@ public:
 
         int original_width;
         int original_height;
+        int new_width;
+        int new_height;
+        float32_t ratio;
 
         double st_time = ros::Time::now().toSec();
 
@@ -57,15 +60,31 @@ public:
             cv::Mat cv_image = cv::imdecode(cv::Mat(msgs[i]->data), cv::IMREAD_COLOR);
             original_height = cv_image.rows;
             original_width = cv_image.cols;
-          
+
+            ratio = (float)(target_width_ / original_width) > (float)(target_height_ / original_height)
+             ? (float)target_width_ / original_width : (float)target_height_ / original_height; 
+
+            new_width = original_width * ratio;
+            new_height = original_height * ratio;
+
+            ROS_INFO("Original Image Size: %d x %d", original_width, original_height);
+            ROS_INFO("New Image Size: %d x %d", new_width, new_height);
+
             // 转换图像为浮点类型，便于归一化操作
             cv_image.convertTo(cv_image, CV_32F);
 
             // 1. 先resize
-            cv::resize(cv_image, cv_image, cv::Size(640, 480), 0, 0, cv::INTER_AREA);  // 缩放到640x480
+            cv::resize(cv_image, cv_image, cv::Size(new_width, new_height), 0, 0, cv::INTER_NEAREST);  // 缩放到640x480
+            
+            // Check the new width and height is the multiple of pad_size
+            int pad_width = (new_width + pad_size_ - 1) / pad_size_ * pad_size_ - new_width;
+            int pad_height = (new_height + pad_size_ - 1) / pad_size_ * pad_size_ - new_height;
 
+            ROS_INFO("Pad Size: %d x %d", pad_width, pad_height);
+            // 2. 填充图像
+            cv::copyMakeBorder(cv_image, cv_image, 0, pad_height, 0, pad_width, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
 
-            // 2. 归一化
+            // 3. 归一化
             cv::Mat mean_mat(cv_image.size(), cv_image.type(), img_mean);
             cv::Mat std_mat(cv_image.size(), cv_image.type(), img_std);
 
@@ -91,8 +110,8 @@ public:
         out_image_msg.image_left = out_msgs[2];
         out_image_msg.image_right = out_msgs[3];
 
-        out_image_msg.height = original_height;
-        out_image_msg.width = original_width;
+        out_image_msg.height = new_height;
+        out_image_msg.width = new_width;
 
         out_image_msg.localization = *msg5;
         pub_.publish(out_image_msg);
@@ -112,6 +131,8 @@ private:
     cv::Scalar img_std = cv::Scalar(58.395, 57.12, 57.375);
     
     ros::Publisher pub_;
+    int target_width_ = 224, target_height_ = 224;
+    int pad_size_ = 16;
 };
 
 

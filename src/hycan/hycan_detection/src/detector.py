@@ -7,6 +7,7 @@ import yaml
 from hycan_msgs.msg import FourImages, Box3D, DetectionResults
 import sys
 import os
+import cv2
 # Add the path to the 'src' directory (parent of common and centerserver)
 src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(src_path)
@@ -30,9 +31,6 @@ class Detector:
         config = os.path.join(config_path, 'mv_dfm_{}.yaml'.format(self.vehicle))
         with open(config, 'r') as f:
             config = yaml.safe_load(f)
-
-        self.height = 480
-        self.width = 640
         
         self.use_trt = True
         if not self.use_trt:
@@ -60,12 +58,11 @@ class Detector:
 
     def to_tensor(self, img_msg):
         if self.use_trt:
-            return torch.FloatTensor(
-                np.array(img_msg.data, dtype=np.float32)
-                    .reshape((3, img_msg.height, img_msg.width)))
+            return np.array(img_msg.data, dtype=np.float32)\
+                    .reshape((img_msg.height, img_msg.width, 3)).transpose(2, 0, 1)
         return torch.FloatTensor(
             np.array(img_msg.data, dtype=np.float32)
-                .reshape((3, self.height, self.width))).to(self.device)
+                .reshape((img_msg.height, img_msg.width, 3)).transpose(2, 0, 1)).to(self.device)
 
     def detect(self, msg):
         # start time
@@ -79,14 +76,18 @@ class Detector:
         image_right = self.to_tensor(msg.image_right)
 
         # turn the images into tensor
-        images = torch.stack([image_front, image_back, image_left, image_right]).unsqueeze(0)
-        rospy.loginfo("Images shape: {}".format(images.shape))
+        if self.use_trt:
+            images = np.expand_dims(np.stack([image_front, image_back, image_left, image_right]), axis=0)
+        else:
+            images = torch.stack([image_front, image_back, image_left, image_right]).unsqueeze(0)
+        rospy.loginfo("Images shape: {}, shape without pad is {}".format(images.shape, (msg.height, msg.width, 3)))
+        rospy.loginfo("Time for image processing: {}".format(time() - st))
         img_metas = [
             dict(
-                img_shape=[(self.height, self.width, 3)] * 4,
+                img_shape=[(msg.height, msg.width, 3)] * 4,
                 ori_shape=[(msg.height, msg.width, 3)] *4,
-                pad_shape=[(self.height, self.width, 3)] * 4,
-                scale_factor=torch.FloatTensor([0.5, 0.5, 0.5, 0.5]),
+                pad_shape=[(msg.image_front.height, msg.image_front.width, 3)] * 4,
+                scale_factor=torch.FloatTensor([msg.ratio, msg.ratio]),
                 flip=False,
                 keep_ratio=True,
                 num_views = 4,
@@ -124,11 +125,12 @@ class Detector:
             box_msg.heading = box[6]
 
             results.box3d_array.append(box_msg)
+
         results.num_boxes = len(bbox)
         results.localization = msg.localization
         results.image_stamp = msg.image_front.header.stamp
 
-        rospy.loginfo("Inference time : {}".format(time() - st))
+        rospy.loginfo("Inference time : {}, detection results number is {}".format(time() - st, results.num_boxes))
         # localization and time delay
         localization = (msg.localization.utm_x, msg.localization.utm_y,msg.localization.heading)
         rospy.loginfo("Localization: {}".format(localization))
