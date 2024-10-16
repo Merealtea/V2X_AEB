@@ -185,6 +185,7 @@ add_executable(img_proc_node
 target_link_libraries(img_proc_node
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
+  rt
 )
 
 

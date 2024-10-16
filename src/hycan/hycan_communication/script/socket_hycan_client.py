@@ -32,6 +32,7 @@ class SocketClient:
         self.get_fmt_length()
 
         self.fusion_pub = rospy.Publisher('fusion_results', DetectionResults, queue_size=10)
+        self.prev_time = None
 
     def __del__(self):
         if hasattr(self, '_socket'):

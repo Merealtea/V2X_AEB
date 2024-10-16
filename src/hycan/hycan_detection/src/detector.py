@@ -4,7 +4,7 @@
 import rospy
 import numpy as np
 import yaml
-from hycan_msgs.msg import FourImages, Box3D, DetectionResults
+from hycan_msgs.msg import Localization, Box3D, DetectionResults
 import sys
 import os
 import cv2
@@ -17,6 +17,7 @@ from core.bbox.structures.lidar_box3d import LiDARInstance3DBoxes
 import torch
 import rospkg
 from time import time
+from hycan.hycan_detection.src.shm import Images_Shared_Memory
 from common.Mono3d.tools.inference_test import TRTModel
 from pycuda import driver as cuda
 import pycuda.autoinit
@@ -31,6 +32,10 @@ class Detector:
         config = os.path.join(config_path, 'mv_dfm_{}.yaml'.format(self.vehicle))
         with open(config, 'r') as f:
             config = yaml.safe_load(f)
+
+        self.img_shm = Images_Shared_Memory('hycan_image_shm', 4)
+        self.mean = np.ascontiguousarray(np.broadcast_to(np.array([123.675, 116.28, 103.53]).reshape(1, 3, 1, 1), (4, 3, 224, 400)))
+        self.std = np.ascontiguousarray(np.broadcast_to(np.array([58.395, 57.12, 57.375]).reshape(1, 3, 1, 1), (4, 3, 224, 400)))
         
         self.use_trt = True
         if not self.use_trt:
@@ -48,46 +53,59 @@ class Detector:
             rospy.loginfo("TensorRT model is loaded")
 
         # initialze the subscriber
-        rospy.Subscriber('{}_processed_images'.format(self.vehicle), FourImages, self.detect)
+        rospy.Subscriber('{}_processed_images'.format(self.vehicle), Localization, self.detect)
         self.pub = rospy.Publisher('{}_detection_results'.format(self.vehicle), DetectionResults, queue_size=10)
         rospy.loginfo("Detector is ready")
+
+        ### FOR DEBUGGING
+        self.prev_timestamp = None
 
     def __del__(self):
         if self.use_trt:
             self.cfx.pop()
 
-    def to_tensor(self, img_msg):
-        if self.use_trt:
-            return np.array(img_msg.data, dtype=np.float32)\
-                    .reshape((img_msg.height, img_msg.width, 3)).transpose(2, 0, 1)
-        return torch.FloatTensor(
-            np.array(img_msg.data, dtype=np.float32)
-                .reshape((img_msg.height, img_msg.width, 3)).transpose(2, 0, 1)).to(self.device)
+    def get_shm_images(self):
+        frame_idxs, imgs, camera_ids, \
+            width_no_pad, height_no_pad, \
+                original_width, original_height, \
+                    ratio, timestamp = self.img_shm.read_imgs_from_shm()
+
+
+        imgs = (imgs.transpose(0,3,1,2) - self.mean) / self.std
+        
+        if not self.use_trt:
+            imgs = torch.FloatTensor(imgs).to(self.device).unsqueeze(0)
+        else:
+            imgs = np.expand_dims(imgs, axis=0)
+
+        return frame_idxs, imgs, camera_ids, width_no_pad, height_no_pad, original_width, original_height, ratio, timestamp
+
 
     def detect(self, msg):
         # start time
         st = time()
         rospy.loginfo("Received hycan images")
+        frame_idxs, imgs, camera_ids, \
+            width_no_pad, height_no_pad, \
+                original_width, original_height, \
+                    ratio, timestamp = self.get_shm_images()
+        
+        rospy.loginfo("Processing image {} with timestamp: {}".format(frame_idxs[0], time() - st))
 
-        # get the images
-        image_front = self.to_tensor(msg.image_front)
-        image_back = self.to_tensor(msg.image_back)
-        image_left = self.to_tensor(msg.image_left)
-        image_right = self.to_tensor(msg.image_right)
+        
+        if self.prev_timestamp is not None:
+            rospy.loginfo("FPS in detector is : {:6f}".format( 1/ (timestamp - self.prev_timestamp)))
+        self.prev_timestamp = timestamp
+        height, width = imgs.shape[3], imgs.shape[4]
 
-        # turn the images into tensor
-        if self.use_trt:
-            images = np.expand_dims(np.stack([image_front, image_back, image_left, image_right]), axis=0)
-        else:
-            images = torch.stack([image_front, image_back, image_left, image_right]).unsqueeze(0)
-        rospy.loginfo("Images shape: {}, shape without pad is {}".format(images.shape, (msg.height, msg.width, 3)))
-        rospy.loginfo("Time for image processing: {}".format(time() - st))
+        # rospy.loginfo("Images shape: {}, shape without pad is {}".format((height, width), 
+        #                                                                 (height_no_pad, width_no_pad, 3)))
         img_metas = [
             dict(
-                img_shape=[(msg.height, msg.width, 3)] * 4,
-                ori_shape=[(msg.height, msg.width, 3)] *4,
-                pad_shape=[(msg.image_front.height, msg.image_front.width, 3)] * 4,
-                scale_factor=torch.FloatTensor([msg.ratio, msg.ratio]),
+                img_shape=[(height_no_pad, width_no_pad, 3)] * 4,
+                ori_shape=[(original_height, original_width, 3)] *4,
+                pad_shape=[(height, width, 3)] * 4,
+                scale_factor=torch.FloatTensor([ratio, ratio]),
                 flip=False,
                 keep_ratio=True,
                 num_views = 4,
@@ -101,10 +119,10 @@ class Detector:
         # detect the objects
         if not self.use_trt:
             with torch.no_grad():
-                result = self.detector(images, img_metas, return_loss=False)[0]
+                result = self.detector(imgs, img_metas, return_loss=False)[0]
         else:
             self.cfx.push()
-            result = self.detector(images, img_metas, return_loss=False)[0]
+            result = self.detector(imgs, img_metas, return_loss=False)[0]
             self.cfx.pop()
 
         if hasattr(result['boxes_3d'], 'tensor'):
@@ -127,15 +145,16 @@ class Detector:
             results.box3d_array.append(box_msg)
 
         results.num_boxes = len(bbox)
-        results.localization = msg.localization
-        results.image_stamp = msg.image_front.header.stamp
+        results.localization = msg
+        results.image_stamp = rospy.Time.from_sec(timestamp)
         results.vehicle_id = self.vehicle
 
         rospy.loginfo("Inference time : {}, detection results number is {}".format(time() - st, results.num_boxes))
         # localization and time delay
-        localization = (msg.localization.utm_x, msg.localization.utm_y,msg.localization.heading)
-        rospy.loginfo("Localization: {}".format(localization))
+        rospy.loginfo("Localization: {}".format((msg.utm_x, msg.utm_y,msg.heading)))
         self.pub.publish(results)
+
+        rospy.loginfo("Total time delay is : {}".format(rospy.Time.now().to_sec() - timestamp))
         
 
 
