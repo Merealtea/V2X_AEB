@@ -34,8 +34,8 @@ class Detector:
             config = yaml.safe_load(f)
 
         self.img_shm = Images_Shared_Memory('hycan_image_shm', 4)
-        self.mean = np.ascontiguousarray(np.broadcast_to(np.array([123.675, 116.28, 103.53]).reshape(1, 3, 1, 1), (4, 3, 224, 400)))
-        self.std = np.ascontiguousarray(np.broadcast_to(np.array([58.395, 57.12, 57.375]).reshape(1, 3, 1, 1), (4, 3, 224, 400)))
+        self.mean = np.ascontiguousarray(np.broadcast_to(np.array([123.675, 116.28, 103.53]).reshape(1, 3, 1, 1), (4, 3, 640, 368)))
+        self.std = np.ascontiguousarray(np.broadcast_to(np.array([58.395, 57.12, 57.375]).reshape(1, 3, 1, 1), (4, 3, 640, 368)))
         
         self.use_trt = True
         if not self.use_trt:
@@ -59,6 +59,7 @@ class Detector:
 
         ### FOR DEBUGGING
         self.prev_timestamp = None
+        self.prev_frame_idx = None
 
     def __del__(self):
         if self.use_trt:
@@ -89,6 +90,10 @@ class Detector:
             width_no_pad, height_no_pad, \
                 original_width, original_height, \
                     ratio, timestamp = self.get_shm_images()
+        if self.prev_frame_idx and frame_idxs[0] == self.prev_frame_idx:
+            rospy.loginfo("The new frame is the same as the previous frame for {}".format(frame_idxs[0]))
+            return 
+        self.prev_frame_idx = frame_idxs[0]
         
         rospy.loginfo("Processing image {} with timestamp: {}".format(frame_idxs[0], time() - st))
 

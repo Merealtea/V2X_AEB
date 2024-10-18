@@ -18,8 +18,8 @@
 using namespace std;
 
 // Define the shared memory structure for single camera
-#define TARGETWIDTH 224
-#define TARGETHEIGHT 400
+#define TARGETWIDTH 640
+#define TARGETHEIGHT 368
 #define RESIZED_IMG_SIZE TARGETWIDTH * TARGETHEIGHT * 3
 
 typedef struct{

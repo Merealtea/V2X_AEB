@@ -103,7 +103,6 @@ public:
             // 2. 填充图像
             cv::copyMakeBorder(cv_image, cv_image, 0, pad_height, 0, pad_width, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
 
-
             // store the image to shared memory
             resized_img[i].camera_id = i;
             resized_img[i].frame_idx = frame_idx;
@@ -142,14 +141,10 @@ private:
     message_filters::Subscriber<hycan_msgs::Localization> sub5_;
     boost::shared_ptr<message_filters::Synchronizer<MySyncPolicy>> sync_;
 
-    // // 定义均值和方差，分别对应 BGR 颜色通道
-    // cv::Scalar img_mean = cv::Scalar(123.675, 116.28, 103.53);
-    // cv::Scalar img_std = cv::Scalar(58.395, 57.12, 57.375);
-
     int frame_idx = 0;
     
     ros::Publisher pub_;
-    int target_width_ = 224, target_height_ = 224;
+    int target_width_ = 360, target_height_ = 360;
     int pad_size_ = 16;
 
     ros::Time last_time_ = ros::Time::now();
