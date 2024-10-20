@@ -113,7 +113,8 @@ class SocketServer:
                     data += client.recv(count - len(data))
             
                 rospy.loginfo(f"Receive data length: {len(data)}")
-                rospy.loginfo(f"Time delay is {time.time()-send_timestamp}s")
+                rospy.loginfo(f"Communication Time delay is {time.time()-send_timestamp}s")
+                rospy.loginfo(f"Total Time delay is {time.time()-image_timestamp}s")
 
                 # Package the images and imu data into a ROS message
                 detection_results = DetectionResults()

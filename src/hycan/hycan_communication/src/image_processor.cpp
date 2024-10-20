@@ -34,10 +34,10 @@ public:
         resized_img = new IMAGE_ELEMENT[4];
 
         // 订阅四个压缩图像话题
-        sub1_.subscribe(nh_, "/miivii_gmsl_ros/camera1/compressed", 1);
-        sub2_.subscribe(nh_, "/miivii_gmsl_ros/camera2/compressed", 1);
-        sub3_.subscribe(nh_, "/miivii_gmsl_ros/camera4/compressed", 1);
-        sub4_.subscribe(nh_, "/miivii_gmsl_ros/camera3/compressed", 1);
+        sub1_.subscribe(nh_, "/miivii_gmsl_ros/camera4/compressed", 1);
+        sub2_.subscribe(nh_, "/miivii_gmsl_ros/camera3/compressed", 1);
+        sub3_.subscribe(nh_, "/miivii_gmsl_ros/camera1/compressed", 1);
+        sub4_.subscribe(nh_, "/miivii_gmsl_ros/camera2/compressed", 1);
         sub5_.subscribe(nh_, "hycan_utm_localization", 1);
 
         // 同步策略
@@ -50,10 +50,10 @@ public:
         ROS_INFO("OpenCV version: %s", CV_VERSION);
     }
 
-    void imageCallback(const sensor_msgs::CompressedImage::ConstPtr& msg1, // front
-                        const sensor_msgs::CompressedImage::ConstPtr& msg2, // back
-                          const sensor_msgs::CompressedImage::ConstPtr& msg3, // left
-                           const sensor_msgs::CompressedImage::ConstPtr& msg4,  // right
+    void imageCallback(const sensor_msgs::CompressedImage::ConstPtr& msg1, // left
+                        const sensor_msgs::CompressedImage::ConstPtr& msg2, // right
+                          const sensor_msgs::CompressedImage::ConstPtr& msg3, // front
+                           const sensor_msgs::CompressedImage::ConstPtr& msg4,  // back
                             const hycan_msgs::Localization::ConstPtr& msg5)
     {
         if(is_odd)
@@ -93,7 +93,7 @@ public:
             ROS_INFO("New Image Size: %d x %d", new_width, new_height);
 
             // 1. 先resize
-            cv::resize(cv_image, cv_image, cv::Size(new_width, new_height), 0, 0, cv::INTER_NEAREST);  // 缩放到640x480
+            cv::resize(cv_image, cv_image, cv::Size(new_width, new_height), 0, 0, cv::INTER_LINEAR);  // 缩放到640x480
             
             // Check the new width and height is the multiple of pad_size
             int pad_width = (new_width + pad_size_ - 1) / pad_size_ * pad_size_ - new_width;

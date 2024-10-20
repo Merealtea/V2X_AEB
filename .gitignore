@@ -3,6 +3,7 @@
 build/
 devel/
 log/
+debug/
 .catkin_workspace
 .catkin_tools/
 CATKIN_IGNORE
