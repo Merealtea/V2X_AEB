@@ -26,7 +26,6 @@ class SocketClient:
 
         self.local_host = local_host
         self.local_port = local_port
-        self.idx = 0
 
         self.fmt = "ddiIIddd"
         self.get_fmt_length()
@@ -92,7 +91,8 @@ class SocketClient:
                 image_stamp = msg.image_stamp.to_sec() 
                 cur_stamp = time.time()
                 # 将数据打包
-                header = self.pack_data(image_stamp, cur_stamp, msg.num_boxes, self.idx, count, msg.localization.utm_x, msg.localization.utm_y, msg.localization.heading)
+                header = self.pack_data(image_stamp, cur_stamp, msg.num_boxes, msg.frame_idx, count,
+                                         msg.localization.utm_x, msg.localization.utm_y, msg.localization.heading)
                 data = header + boxes_array
                 self._socket.sendall(data)
                 rospy.loginfo("Sending data of {} length".format(count))
@@ -105,7 +105,6 @@ class SocketClient:
             self._socket.close()
             self._connected = False
             self.connection()
-        self.idx += 1
 
     def _recieve_results(self):
 

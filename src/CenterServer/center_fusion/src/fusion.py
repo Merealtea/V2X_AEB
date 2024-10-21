@@ -37,6 +37,7 @@ class DetectionFusion:
         vehicle_id = msg.vehicle_id
         localization = msg.localization
         num_bboxes = msg.num_boxes
+        frame_idx = msg.frame_idx
         
         msg.sender.stamp = rospy.Time.now() - (msg.reciever.stamp - msg.sender.stamp)
         msg.image_stamp = rospy.Time.now() - (msg.reciever.stamp - msg.image_stamp)
@@ -51,7 +52,7 @@ class DetectionFusion:
         update_res = {}
         tracker_res = {}
         bbox_array = []
-        rospy.loginfo(f"Receive {num_bboxes} bboxes from {vehicle_id}, time delay is {(msg.reciever.stamp - msg.image_stamp).to_sec()}" )
+        rospy.loginfo(f"Receive {num_bboxes} bboxes in {frame_idx} from {vehicle_id}, time delay is {(msg.reciever.stamp - msg.image_stamp).to_sec()}" )
         if num_bboxes > 0:
             
             for i in range(num_bboxes):
