@@ -48,7 +48,7 @@ public:
 
     void convert_to_utm(const sensor_msgs::NavSatFix& gps) {
         char* zone = nullptr;
-        LLtoUTM(gps.latitude, gps.longitude, vhx, vhy, zone);
+        LLtoUTM(gps.latitude, gps.longitude, vhy, vhx, zone);
         ROS_INFO("UTM Coordinates: Easting %f, Northing %f", vhx, vhy);
     }
 

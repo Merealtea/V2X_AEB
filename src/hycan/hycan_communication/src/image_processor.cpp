@@ -5,9 +5,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
-#include <hycan_msgs/FourImages.h>  // 自定义消息
 #include <hycan_msgs/Localization.h>
-#include <hycan_msgs/Image.h>
 #include "common.hpp"
 #include <string.h>
 
@@ -119,7 +117,6 @@ public:
             ROS_INFO("Image %d: %d x %d", i, resized_img[i].width, resized_img[i].height);
             ROS_INFO("Timestamp is %f", resized_img[i].stamp);
             memcpy(&resized_img[i].data, cv_image.data, RESIZED_IMG_SIZE);
-
         }
 
         frame_idx++;
