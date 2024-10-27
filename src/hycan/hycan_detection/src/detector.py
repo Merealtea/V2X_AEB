@@ -51,6 +51,11 @@ class Detector:
             self.detector = TRTModel(trt_path)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             rospy.loginfo("TensorRT model is loaded")
+        
+        # Initialize the GPU Memory
+        if self.use_trt:
+            dummy_input = np.random.randn(1, 4, 3, 640, 368).astype(np.float32)
+            self.detector(dummy_input, None, None)
 
         # initialze the subscriber
         rospy.Subscriber('{}_processed_images'.format(self.vehicle), Localization, self.detect)
@@ -115,7 +120,7 @@ class Detector:
                 keep_ratio=True,
                 num_views = 4,
                 num_ref_frames = 0,
-                direction = ['front', 'back', 'left', 'right'],
+                direction = ['left', 'right','front', 'back'],
                 pad_size_divisor = 16,
                 box_type_3d = LiDARInstance3DBoxes,
             )
@@ -153,6 +158,7 @@ class Detector:
         results.localization = msg
         results.image_stamp = rospy.Time.from_sec(timestamp)
         results.vehicle_id = self.vehicle
+        results.frame_idx = frame_idxs[0]
 
         rospy.loginfo("Inference time : {}, detection results number is {}".format(time() - st, results.num_boxes))
         # localization and time delay

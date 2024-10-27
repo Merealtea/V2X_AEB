@@ -104,7 +104,7 @@ class SocketServer:
                 if header == b'':
                     continue
 
-                image_timestamp, send_timestamp, num_bboxes, idx, count, x, y, yaw =\
+                image_timestamp, send_timestamp, num_bboxes, frame_idx, count, x, y, yaw =\
                         struct.unpack(self.fmt, header) 
 
                 rospy.loginfo(f"Receive image data from {vehicle}: {send_timestamp},  {count}")
@@ -128,7 +128,7 @@ class SocketServer:
                     box = Box3D()
                     box.center_x = data[i][0] + x
                     box.center_y = data[i][1] + y
-                    box.center_z = data[i][2]
+                    box.center_z = 0 #data[i][2]
                     box.width = data[i][3]
                     box.length = data[i][4]
                     box.height = data[i][5]
@@ -142,7 +142,7 @@ class SocketServer:
                 
                 # 记录接收到消息的时间
                 detection_results.sender.stamp = rospy.Time.from_sec(send_timestamp)
-                detection_results.sender.seq = idx
+                detection_results.frame_idx = frame_idx
                 detection_results.reciever.stamp = rospy.Time.now()
                 detection_results.image_stamp = rospy.Time.from_sec(image_timestamp)
                 self.new_bag.write(topic, detection_results)

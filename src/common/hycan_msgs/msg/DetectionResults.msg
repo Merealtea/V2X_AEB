@@ -1,6 +1,8 @@
 Header sender
 Header reciever
 
+int32 frame_idx
+
 time image_stamp
 string vehicle_id
 

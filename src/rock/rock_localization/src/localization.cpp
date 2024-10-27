@@ -31,7 +31,7 @@ public:
 
         // Get postition
         char* zone = nullptr;
-        LLtoUTM(gps_msg->latitude, gps_msg->longitude, vhx, vhy, zone);
+        LLtoUTM(gps_msg->latitude, gps_msg->longitude, vhy, vhx, zone);
         ROS_INFO("UTM Coordinates: Easting %f, Northing %f", vhx, vhy);
         
         // Get Orientation
