@@ -7,7 +7,6 @@ import yaml
 from hycan_msgs.msg import Localization, Box3D, DetectionResults
 import sys
 import os
-import cv2
 # Add the path to the 'src' directory (parent of common and centerserver)
 src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(src_path)
