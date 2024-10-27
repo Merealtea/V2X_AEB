@@ -30,10 +30,10 @@ class Detector:
             config = yaml.safe_load(f)
 
         self.img_shm = Images_Shared_Memory('rock_image_shm', 4)
-        self.mean = np.ascontiguousarray(np.broadcast_to(np.array([123.675, 116.28, 103.53]).reshape(1, 3, 1, 1), (4, 3, 640, 368)))
-        self.std = np.ascontiguousarray(np.broadcast_to(np.array([58.395, 57.12, 57.375]).reshape(1, 3, 1, 1), (4, 3, 640, 368)))
+        self.mean = np.ascontiguousarray(np.broadcast_to(np.array([123.675, 116.28, 103.53]).reshape(1, 3, 1, 1), (4, 3, 368, 640)))
+        self.std = np.ascontiguousarray(np.broadcast_to(np.array([58.395, 57.12, 57.375]).reshape(1, 3, 1, 1), (4, 3, 368, 640)))
 
-        self.use_trt = True
+        self.use_trt = False
         if not self.use_trt:
             self.detector = build_detector(config)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -54,7 +54,7 @@ class Detector:
 
         # Initialize the GPU Memory
         if self.use_trt:
-            dummy_input = np.random.randn(1, 4, 3, 640, 368).astype(np.float32)
+            dummy_input = np.random.randn(1, 4, 3, 368, 640).astype(np.float32)
             self.detector(dummy_input, None, None)
 
         # initialze the subscriber
@@ -100,7 +100,7 @@ class Detector:
         if self.prev_timestamp is not None:
             rospy.loginfo("FPS in detector is : {:6f}".format( 1/ (timestamp - self.prev_timestamp)))
         self.prev_timestamp = timestamp
-        height, width = imgs.shape[3], imgs.shape[4]
+        width, height = imgs.shape[4], imgs.shape[3]
 
         # rospy.loginfo("Images shape: {}, shape without pad is {}".format((height, width), 
         #                                                                 (height_no_pad, width_no_pad, 3)))
