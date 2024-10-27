@@ -49,7 +49,7 @@ class Images_Shared_Memory():
 
             if select_camera_ids is None or camera_id in select_camera_ids:
                 array = np.frombuffer(self.shm.buf[j+self.header_size:(i+1)*self.size_each_image], 
-                                      dtype=np.uint8).reshape(width, height,  channel)
+                                      dtype=np.uint8).reshape(height, width,  channel)
                 imgs.append(array.astype(np.float32))
                 frame_idxs.append(frame_idx)
                 camera_ids.append(camera_id)
