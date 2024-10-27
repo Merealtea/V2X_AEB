@@ -53,7 +53,15 @@ public:
                            const sensor_msgs::CompressedImage::ConstPtr& msg4,  // back
                             const hycan_msgs::Localization::ConstPtr& msg5)
     {
-        // Control the FPS Less than 5
+        ros::Time st_time = ros::Time::now();
+
+        // make sure the FPS is 5
+        double time_diff = (st_time - last_time_).toSec();
+    
+        if (time_diff < 1.0 / FPS) {
+            return;
+        }
+        last_time_ = st_time;
 
         // 只有在gps有的情况下才更新消息
         std::vector<sensor_msgs::CompressedImageConstPtr> msgs = {msg1, msg2, msg3, msg4};
@@ -64,10 +72,6 @@ public:
         int new_height;
         float_t ratio;
 
-        ros::Time st_time = ros::Time::now();
-
-        double time_diff = (msg1->header.stamp - last_time_).toSec();
-        last_time_ = msg1->header.stamp;
         ROS_INFO("FPS in image processor is %f", 1.0 / time_diff);
 
         // 处理每个压缩图像
@@ -133,6 +137,7 @@ private:
     boost::shared_ptr<message_filters::Synchronizer<MySyncPolicy>> sync_;
 
     int frame_idx = 0;
+    int FPS = 5;
 
     ros::Publisher pub_;
 

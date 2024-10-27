@@ -1,1 +1,1 @@
-cd ../.. && catkin build hycan_msgs rock_comm rock_localization rock_detection
+cd ../.. && catkin build hycan_msgs rock_comm rock_localization rock_detection rock_visualization

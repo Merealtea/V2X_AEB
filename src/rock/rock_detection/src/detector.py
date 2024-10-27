@@ -33,7 +33,7 @@ class Detector:
         self.mean = np.ascontiguousarray(np.broadcast_to(np.array([123.675, 116.28, 103.53]).reshape(1, 3, 1, 1), (4, 3, 640, 368)))
         self.std = np.ascontiguousarray(np.broadcast_to(np.array([58.395, 57.12, 57.375]).reshape(1, 3, 1, 1), (4, 3, 640, 368)))
 
-        self.use_trt = False
+        self.use_trt = True
         if not self.use_trt:
             self.detector = build_detector(config)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -146,7 +146,9 @@ class Detector:
             box_msg.height = box[5]
             box_msg.heading = box[6]
 
-            results.num_boxes = len(bbox)
+            results.box3d_array.append(box_msg)
+
+        results.num_boxes = len(bbox)
         results.localization = msg
         results.image_stamp = rospy.Time.from_sec(timestamp)
         results.vehicle_id = self.vehicle
@@ -171,6 +173,6 @@ if __name__ == '__main__':
     ws_path = package_path.split('rock')[0]
 
     model_config_path = ws_path + 'common/Mono3d/configs/models'
-    model_path = ws_path + '../data/model_parameter/rock_mv_fcos3d.pth'
+    model_path = ws_path + '../model_ckpt/rock_mv_fcos3d.pth'
     Detector(model_config_path, model_path)
     rospy.spin()
