@@ -53,8 +53,19 @@ def iou_batch(bb_test, bb_gt):
   w = np.maximum(0., xx2 - xx1)
   h = np.maximum(0., yy2 - yy1)
   wh = w * h
-  o = wh / (bb_test[..., 3] * bb_test[..., 4] + bb_gt[..., 3] *  bb_gt[..., 4] - wh)                                             
-  return(o)  
+  o = wh / (bb_test[..., 3] * bb_test[..., 4] + bb_gt[..., 3] *  bb_gt[..., 4] - wh)     
+                                        
+  return(-o)  
+
+def distance_matrix(boxes, boxes2):
+    """
+    Compute the distance matrix between boxes and boxes2
+    """
+    dist = np.zeros((len(boxes), len(boxes2)))
+    for i, box in enumerate(boxes):
+        for j, box2 in enumerate(boxes2):
+            dist[i, j] = np.linalg.norm(box[:2] - box2[:2])
+    return dist
 
 def bev_box_overlap(boxes, qboxes, criterion=-1):
     from rotate_iou import rotate_iou_gpu_eval
@@ -201,17 +212,15 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
   if(len(trackers)==0):
     return np.empty((0,2),dtype=int), np.arange(len(detections)), np.empty((0,5),dtype=int)
 
-  iou_matrix = iou_batch(detections, trackers)
-  print("IOU matrix is ", iou_matrix)
-  if iou_matrix.max() > 0 or iou_matrix.min() < 0:
-    print(detections, trackers)
+  cost_matrix = iou_batch(detections, trackers)
+  print("IOU matrix is ", cost_matrix)
 
-  if min(iou_matrix.shape) > 0:
-    a = (iou_matrix > iou_threshold).astype(np.int32)
+  if min(cost_matrix.shape) > 0:
+    a = (cost_matrix < iou_threshold).astype(np.int32)
     if a.sum(1).max() == 1 and a.sum(0).max() == 1:
         matched_indices = np.stack(np.where(a), axis=1)
     else:
-      matched_indices = linear_assignment(-iou_matrix)
+      matched_indices = linear_assignment(cost_matrix)
   else:
     matched_indices = np.empty(shape=(0,2))
 
@@ -227,7 +236,7 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
   #filter out matched with low IOU
   matches = []
   for m in matched_indices:
-    if(iou_matrix[m[0], m[1]]<iou_threshold):
+    if(cost_matrix[m[0], m[1]]>iou_threshold):
       unmatched_detections.append(m[0])
       unmatched_trackers.append(m[1])
     else:
@@ -241,7 +250,7 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
 
   
 class Sort(object):
-  def __init__(self, vehicle_id, localization, max_age=1, min_hits=3, iou_threshold=0.1):
+  def __init__(self, vehicle_id, localization, max_age=1, min_hits=3, iou_threshold=0.5):
     """
      Every vehicle has its own SORT tracker
     """
