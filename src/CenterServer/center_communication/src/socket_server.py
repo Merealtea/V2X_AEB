@@ -114,7 +114,7 @@ class SocketServer:
             
                 rospy.loginfo(f"Receive data length: {len(data)}")
                 rospy.loginfo(f"Communication Time delay is {time.time()-send_timestamp}s")
-                rospy.loginfo(f"Total Time delay is {time.time()-image_timestamp}s")
+                rospy.loginfo(f"Total time delay is {rospy.Time().now().to_sec() -image_timestamp}s")
 
                 # Package the images and imu data into a ROS message
                 detection_results = DetectionResults()
@@ -123,16 +123,21 @@ class SocketServer:
                 else:
                     data = np.ascontiguousarray(np.frombuffer(data, dtype=np.float32)).reshape(num_bboxes, -1)
 
+                trans_mat = np.array([[np.cos(yaw), -np.sin(yaw), x],
+                                      [np.sin(yaw), np.cos(yaw), y],
+                                      [0, 0, 1]])
+
                 # 将坐标从车辆坐标系转换到世界坐标系
                 for i in range(num_bboxes):
                     box = Box3D()
-                    box.center_x = data[i][0] + x
-                    box.center_y = data[i][1] + y
-                    box.center_z = data[i][2]
+                    world_x, world_y, _ = trans_mat @ np.array([data[i][0], data[i][1], 1])
+                    box.center_x = world_x
+                    box.center_y = world_y
+                    box.center_z = data[i][5] / 2
                     box.width = data[i][3]
                     box.length = data[i][4]
                     box.height = data[i][5]
-                    box.heading = data[i][6] + yaw - np.pi/2
+                    box.heading = data[i][6] + yaw
                     detection_results.box3d_array.append(box)
                 detection_results.num_boxes = num_bboxes
                 detection_results.localization.utm_x = x   

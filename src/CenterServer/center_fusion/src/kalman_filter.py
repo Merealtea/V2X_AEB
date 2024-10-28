@@ -54,8 +54,7 @@ def iou_batch(bb_test, bb_gt):
   h = np.maximum(0., yy2 - yy1)
   wh = w * h
   o = wh / (bb_test[..., 3] * bb_test[..., 4] + bb_gt[..., 3] *  bb_gt[..., 4] - wh)     
-
-  return(-o)  
+  return(1-o)  
 
 def distance_matrix(boxes, boxes2):
     """
@@ -203,7 +202,7 @@ class KalmanBoxTracker(object):
     new_predcit_x[6] = predict_x[4]
     return new_predcit_x
 
-def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
+def associate_detections_to_trackers(detections,trackers,cost_threshold = 0.3):
   """
   Assigns detections to tracked object (both represented as bounding boxes)
 
@@ -212,11 +211,11 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
   if(len(trackers)==0):
     return np.empty((0,2),dtype=int), np.arange(len(detections)), np.empty((0,5),dtype=int)
 
-  cost_matrix = iou_batch(detections, trackers)
-  print("IOU matrix is ", cost_matrix)
+  cost_matrix = distance_matrix(detections, trackers)
+  print("Cost matrix is ", cost_matrix)
 
   if min(cost_matrix.shape) > 0:
-    a = (cost_matrix < iou_threshold).astype(np.int32)
+    a = (cost_matrix < cost_threshold).astype(np.int32)
     if a.sum(1).max() == 1 and a.sum(0).max() == 1:
         matched_indices = np.stack(np.where(a), axis=1)
     else:
@@ -236,7 +235,7 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
   #filter out matched with low IOU
   matches = []
   for m in matched_indices:
-    if(cost_matrix[m[0], m[1]]>iou_threshold):
+    if(cost_matrix[m[0], m[1]] > cost_threshold):
       unmatched_detections.append(m[0])
       unmatched_trackers.append(m[1])
     else:

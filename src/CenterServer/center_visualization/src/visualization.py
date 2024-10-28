@@ -104,14 +104,12 @@ class center_visualization:
         person_markers = MarkerArray()
         num = len(msg.box3d_array)
         for i, box in enumerate(msg.box3d_array):
-            id = 0
             id = box.id
             x, y, z = box.center_x, box.center_y, box.center_z
             x -= self.init_position[0]; y -= self.init_position[1]
             heading = box.heading
             height, width, length = box.height, box.width, box.length
             if width > 2:
-                continue
                 color = (1.0, 0.0, 0.0, 0.8)
             else:
                 color = (0.0, 1.0, 0.0, 0.8)
@@ -120,7 +118,13 @@ class center_visualization:
             person_markers.markers.append(person_marker)
             person_markers.markers.append(person_arrow)
             print("id: ", id)
-            if id != 0:
+            if id == 100:
+                vehicle_id = create_text_marker(i + 2 * num + 1, 'rock', x, y, z + height / 2 + 0.1)
+                person_markers.markers.append(vehicle_id)
+            elif id == 200:
+                vehicle_id = create_text_marker(i + 2 * num + 1, 'hycan', x, y, z + height / 2 + 0.1)
+                person_markers.markers.append(vehicle_id)
+            else:
                 person_id = create_text_marker(i + 2 * num + 1, str(id), x, y, z + height / 2 + 0.1)
                 person_markers.markers.append(person_id)
         
