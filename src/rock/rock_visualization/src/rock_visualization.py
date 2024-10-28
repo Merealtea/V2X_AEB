@@ -62,6 +62,8 @@ class ImageSubscriber:
                      msg.box3d_array[i].heading]
             box_array.append(box)
         box_array = np.array(box_array)
+        if len(box_array) == 0:
+            return  
 
         concat_img = np.zeros((1080, 1920 * 4, 3), dtype=np.uint8)
 
