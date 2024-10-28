@@ -42,7 +42,7 @@ public:
 
         // Calculate yaw from quaternion
         double imu_yaw = atan2(2.0 * (q0 * q3 + q1 * q2), 1.0 - 2.0 * (q2 * q2 + q3 * q3));
-        imu_yaw = imu_yaw ;//- M_PI /2; //* 50 / 64; // Correct for IMU orientation
+        imu_yaw = imu_yaw - M_PI /2; //* 50 / 64; // Correct for IMU orientation
         
         hycan_msgs::Localization localization_msg;
         localization_msg.utm_x = vhx;
