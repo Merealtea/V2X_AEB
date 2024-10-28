@@ -54,7 +54,7 @@ def iou_batch(bb_test, bb_gt):
   h = np.maximum(0., yy2 - yy1)
   wh = w * h
   o = wh / (bb_test[..., 3] * bb_test[..., 4] + bb_gt[..., 3] *  bb_gt[..., 4] - wh)     
-  return(-o)  
+  return(1-o)  
 
 def distance_matrix(boxes, boxes2):
     """
@@ -215,7 +215,7 @@ def associate_detections_to_trackers(detections,trackers,cost_threshold = 0.3):
   print("Cost matrix is ", cost_matrix)
 
   if min(cost_matrix.shape) > 0:
-    a = (cost_matrix > cost_threshold).astype(np.int32)
+    a = (cost_matrix < cost_threshold).astype(np.int32)
     if a.sum(1).max() == 1 and a.sum(0).max() == 1:
         matched_indices = np.stack(np.where(a), axis=1)
     else:
@@ -235,7 +235,7 @@ def associate_detections_to_trackers(detections,trackers,cost_threshold = 0.3):
   #filter out matched with low IOU
   matches = []
   for m in matched_indices:
-    if(cost_matrix[m[0], m[1]]<cost_threshold):
+    if(cost_matrix[m[0], m[1]] > cost_threshold):
       unmatched_detections.append(m[0])
       unmatched_trackers.append(m[1])
     else:

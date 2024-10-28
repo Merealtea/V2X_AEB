@@ -90,6 +90,10 @@ class DetectionFusion:
             msg.box3d_array.append(box) 
 
         for vehicle_id, msg in self.vehicle_res_dict.items():
+            if vehicle_id == "rock":
+                vehicle_id = 100
+            else:
+                vehicle_id = 200
             vehicle_box = Box3D()
             vehicle_box.center_x = msg.localization.utm_x
             vehicle_box.center_y = msg.localization.utm_y
@@ -98,6 +102,7 @@ class DetectionFusion:
             vehicle_box.length = 1.9  
             vehicle_box.height = 1.6
             vehicle_box.heading = msg.localization.heading
+            vehicle_box.id = vehicle_id
             new_msg.box3d_array.append(vehicle_box)
             for box in msg.box3d_array:
                 new_msg.box3d_array.append(box)
