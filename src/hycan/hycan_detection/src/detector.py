@@ -7,7 +7,6 @@ import yaml
 from hycan_msgs.msg import Localization, Box3D, DetectionResults
 import sys
 import os
-import cv2
 # Add the path to the 'src' directory (parent of common and centerserver)
 src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(src_path)
@@ -48,7 +47,7 @@ class Detector:
         else:
             trt_path = ckpt_path.replace('.pth', '.engine')
             self.cfx = cuda.Device(0).make_context()
-            self.detector = TRTModel(trt_path)
+            self.detector = TRTModel(trt_path, 0.5, 0.05)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             rospy.loginfo("TensorRT model is loaded")
         
