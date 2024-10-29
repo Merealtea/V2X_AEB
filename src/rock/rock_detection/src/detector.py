@@ -4,7 +4,7 @@
 import rospy
 import numpy as np
 import yaml
-from hycan_msgs.msg import Localization, Box3D, DetectionResults
+from hycan_msgs.msg import Localization, DetectionResults, Box3D
 import sys
 import os
 # Add the path to the 'src' directory (parent of common and centerserver)
@@ -12,19 +12,17 @@ src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '
 sys.path.append(src_path)
 sys.path.append(os.path.join(src_path, 'common', 'Mono3d'))
 from common.Mono3d.models.builder import build_detector
+from common.Mono3d.configs.FisheyeParam.lidar_model import Lidar_transformation
 from core.bbox.structures.lidar_box3d import LiDARInstance3DBoxes
 import torch
 import rospkg
 from time import time
-from hycan.hycan_detection.src.shm import Images_Shared_Memory
-from common.Mono3d.tools.inference_test import TRTModel
-from pycuda import driver as cuda
-import pycuda.autoinit
+from rock.rock_detection.src.shm import Images_Shared_Memory
 
 class Detector:
     def __init__(self, config_path, ckpt_path):
         # Get the vehicle name from ROS parameter server
-        rospy.init_node('hycan_detector', anonymous=True)
+        rospy.init_node('rock_detector', anonymous=True)
         self.vehicle = rospy.get_param('~vehicle')
         
         # load the detector
@@ -32,10 +30,10 @@ class Detector:
         with open(config, 'r') as f:
             config = yaml.safe_load(f)
 
-        self.img_shm = Images_Shared_Memory('hycan_image_shm', 4)
+        self.img_shm = Images_Shared_Memory('rock_image_shm', 4)
         self.mean = np.ascontiguousarray(np.broadcast_to(np.array([123.675, 116.28, 103.53]).reshape(1, 3, 1, 1), (4, 3, 368, 640)))
         self.std = np.ascontiguousarray(np.broadcast_to(np.array([58.395, 57.12, 57.375]).reshape(1, 3, 1, 1), (4, 3, 368, 640)))
-        
+
         self.use_trt = True
         if not self.use_trt:
             self.detector = build_detector(config)
@@ -45,16 +43,22 @@ class Detector:
             self.detector.eval()
             rospy.loginfo("Pytorch model is loaded")
         else:
+            from common.Mono3d.tools.inference_test import TRTModel
+            from pycuda import driver as cuda
+            import pycuda.autoinit
+
             trt_path = ckpt_path.replace('.pth', '.engine')
             self.cfx = cuda.Device(0).make_context()
-            self.detector = TRTModel(trt_path, 0.5, 0.05)
+            self.detector = TRTModel(trt_path, 0.6, 0.05)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             rospy.loginfo("TensorRT model is loaded")
-        
+
         # Initialize the GPU Memory
         if self.use_trt:
             dummy_input = np.random.randn(1, 4, 3, 368, 640).astype(np.float32)
             self.detector(dummy_input, None, None)
+
+        self.lidar_model = Lidar_transformation("Rock")
 
         # initialze the subscriber
         rospy.Subscriber('{}_processed_images'.format(self.vehicle), Localization, self.detect)
@@ -65,16 +69,11 @@ class Detector:
         self.prev_timestamp = None
         self.prev_frame_idx = None
 
-    def __del__(self):
-        if self.use_trt:
-            self.cfx.pop()
-
     def get_shm_images(self):
         frame_idxs, imgs, camera_ids, \
             width_no_pad, height_no_pad, \
                 original_width, original_height, \
                     ratio, timestamp = self.img_shm.read_imgs_from_shm()
-
 
         imgs = (imgs.transpose(0,3,1,2) - self.mean) / self.std
         
@@ -84,7 +83,6 @@ class Detector:
             imgs = np.expand_dims(imgs, axis=0)
 
         return frame_idxs, imgs, camera_ids, width_no_pad, height_no_pad, original_width, original_height, ratio, timestamp
-
 
     def detect(self, msg):
         # start time
@@ -105,7 +103,7 @@ class Detector:
         if self.prev_timestamp is not None:
             rospy.loginfo("FPS in detector is : {:6f}".format( 1/ (timestamp - self.prev_timestamp)))
         self.prev_timestamp = timestamp
-        height, width = imgs.shape[3], imgs.shape[4]
+        width, height = imgs.shape[4], imgs.shape[3]
 
         # rospy.loginfo("Images shape: {}, shape without pad is {}".format((height, width), 
         #                                                                 (height_no_pad, width_no_pad, 3)))
@@ -139,6 +137,9 @@ class Detector:
         else:
             bbox = result['boxes_3d'].numpy()[:, :7]
 
+        # Transform the box from Lidar coordination to veh rear coordination
+        bbox[:,:3] = self.lidar_model.lidar_to_rear(bbox[:,:3].T).T
+        
         # Demo code
         results = DetectionResults()
         for box in bbox:
@@ -167,18 +168,17 @@ class Detector:
         rospy.loginfo("Total time delay is : {}".format(rospy.Time.now().to_sec() - timestamp))
         
 
-
 if __name__ == '__main__':
     # 创建rospkg对象
     rospack = rospkg.RosPack()
 
     # 获取当前包的路径
-    package_path = rospack.get_path('hycan_detection')
+    package_path = rospack.get_path('rock_detection')
 
     # 获取包的上一级目录
-    ws_path = package_path.split('hycan')[0]
+    ws_path = package_path.split('rock')[0]
 
     model_config_path = ws_path + 'common/Mono3d/configs/models'
-    model_ckpt_path =  ws_path + '../model_ckpt/hycan_mv_fcos3d.pth'
-    Detector(model_config_path, model_ckpt_path)
+    model_path = ws_path + '../model_ckpt/rock_mv_fcos3d.pth'
+    Detector(model_config_path, model_path)
     rospy.spin()

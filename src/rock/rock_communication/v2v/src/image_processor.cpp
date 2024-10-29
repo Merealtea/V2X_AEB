@@ -58,9 +58,9 @@ public:
         // make sure the FPS is 5
         double time_diff = (st_time - last_time_).toSec();
     
-        if (time_diff < 1.0 / FPS) {
-            return;
-        }
+        // if (time_diff < 1.0 / FPS) {
+        //     return;
+        // }
         last_time_ = st_time;
 
         // 只有在gps有的情况下才更新消息
