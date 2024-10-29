@@ -12,7 +12,6 @@ src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '
 sys.path.append(src_path)
 sys.path.append(os.path.join(src_path, 'common', 'Mono3d'))
 from common.Mono3d.models.builder import build_detector
-from common.Mono3d.configs.FisheyeParam.lidar_model import Lidar_transformation
 from core.bbox.structures.lidar_box3d import LiDARInstance3DBoxes
 import torch
 import rospkg
@@ -49,7 +48,7 @@ class Detector:
 
             trt_path = ckpt_path.replace('.pth', '.engine')
             self.cfx = cuda.Device(0).make_context()
-            self.detector = TRTModel(trt_path, 0.6, 0.05)
+            self.detector = TRTModel(trt_path, 0.4, 0.05)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             rospy.loginfo("TensorRT model is loaded")
 
@@ -57,8 +56,6 @@ class Detector:
         if self.use_trt:
             dummy_input = np.random.randn(1, 4, 3, 368, 640).astype(np.float32)
             self.detector(dummy_input, None, None)
-
-        self.lidar_model = Lidar_transformation("Rock")
 
         # initialze the subscriber
         rospy.Subscriber('{}_processed_images'.format(self.vehicle), Localization, self.detect)
@@ -137,9 +134,6 @@ class Detector:
         else:
             bbox = result['boxes_3d'].numpy()[:, :7]
 
-        # Transform the box from Lidar coordination to veh rear coordination
-        bbox[:,:3] = self.lidar_model.lidar_to_rear(bbox[:,:3].T).T
-        
         # Demo code
         results = DetectionResults()
         for box in bbox:

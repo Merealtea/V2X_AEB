@@ -15,6 +15,10 @@ import time
 import numpy as np
 import rospkg
 import threading
+import sys
+src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+sys.path.append(src_path)
+from common.Mono3d.configs.FisheyeParam.lidar_model import Lidar_transformation
 
 class SocketClient:
     def __init__(self, local_host, local_port, remote_host, remote_port):
@@ -28,6 +32,8 @@ class SocketClient:
         self.local_port = local_port
 
         self.idx = 0
+
+        self.lidar_model = Lidar_transformation("Rock")
 
         self.fmt = "ddiIIddd"
         self.get_fmt_length()
@@ -87,6 +93,8 @@ class SocketClient:
                            msg.box3d_array[i].width, msg.box3d_array[i].length, msg.box3d_array[i].height,
                            msg.box3d_array[i].heading]
                     boxes_array.append(box)
+
+                boxes_array[:,:3] = self.lidar_model.lidar_to_rear(boxes_array[:,:3].T).T
                 
                 boxes_array = np.array(boxes_array, dtype=np.float32).tobytes()
                 count = len(boxes_array)
