@@ -83,7 +83,7 @@ class SocketClient:
                 for i in range(msg.num_boxes):
                     box = [msg.box3d_array[i].center_x, msg.box3d_array[i].center_y, msg.box3d_array[i].center_z,
                            msg.box3d_array[i].width, msg.box3d_array[i].length, msg.box3d_array[i].height,
-                           msg.box3d_array[i].heading]
+                           msg.box3d_array[i].heading, msg.box3d_array[i].score]
                     boxes_array.append(box)
                 print(boxes_array)
                 boxes_array = np.array(boxes_array, dtype=np.float32).tobytes()

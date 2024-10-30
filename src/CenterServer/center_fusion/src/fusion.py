@@ -18,6 +18,7 @@ abs_path = os.path.dirname(__file__).split("fusion.py")[0]
 sys.path.append(abs_path)
 from kalman_filter import Sort
 from sklearn.cluster import DBSCAN
+import cv2
 
 class DetectionFusion:
     def __init__(self ):
@@ -29,6 +30,13 @@ class DetectionFusion:
         self.original_res_pub = rospy.Publisher('original_results', DetectionResults, queue_size=10)
         self.vehicle_res_dict = {}
         self.prev_time = {}
+
+        ######### DEBUG #########
+        self.debug_path = os.path.abspath(__file__).split('src')[0] + '../debug'
+        if not os.path.exists(self.debug_path):
+            os.makedirs(self.debug_path)
+            rospy.loginfo("Created {} directory".format(self.debug_path))
+        ######### DEBUG #########
         
         thread = threading.Thread(target=self.send_fusion)
         thread.start()
@@ -58,7 +66,9 @@ class DetectionFusion:
             
             for i in range(num_bboxes):
                 bbox = msg.box3d_array[i]
-                bbox_array.append([bbox.center_x, bbox.center_y, bbox.center_z, bbox.width, bbox.length, bbox.height, bbox.heading])
+                bbox_array.append([bbox.center_x, bbox.center_y, bbox.center_z, 
+                                   bbox.width, bbox.length, bbox.height, 
+                                   bbox.heading, bbox.score])
             bbox_array = np.ascontiguousarray(
                             np.array(bbox_array,
                                     dtype=np.float32)).reshape(num_bboxes, -1)
@@ -71,7 +81,31 @@ class DetectionFusion:
             
             if len(update_res) != len(bbox_array):
                 raise ValueError("The number of track results is not equal to the number of bboxes")
-    
+
+        # The true range of the map is 25m * 25m 
+        bev_figure = np.zeros((1000, 1000, 3), dtype=np.uint8)
+
+        for person_id in tracker_res:
+            x, y, z, w, l, h, yaw = tracker_res[person_id]
+            x = x - localization.utm_x
+            y = y - localization.utm_y
+            x, y = int(x / 0.025 + 500), int(y / 0.025 + 500)
+
+            cv2.circle(bev_figure, (x, y), 5, (0, 255, 255), -1)
+
+            search_range = 0.5
+            cv2.cirecle(bev_figure, (x, y), int(search_range / 0.025), (0, 255, 0), 1)
+
+        for box in bbox_array:
+            x, y, z, w, l, h, yaw, score = box
+            x = x - localization.utm_x
+            y = y - localization.utm_y
+            x, y = int(x / 0.025 + 500), int(y / 0.025 + 500)
+            cv2.circle(bev_figure, (x, y), 5, (255, 0, 0), -1)
+            cv2.putText(bev_figure, "{:3f}".format(score), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
+        cv2.imwrite(os.path.join(self.debug_path, f"{frame_idx}_{vehicle_id}.png"), bev_figure)
+            
         self.vehicle_res_dict[vehicle_id] = msg
         st = time.time()
         new_msg = DetectionResults()

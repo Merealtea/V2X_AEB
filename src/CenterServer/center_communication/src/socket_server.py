@@ -138,6 +138,7 @@ class SocketServer:
                     box.length = data[i][4]
                     box.height = data[i][5]
                     box.heading = data[i][6] + yaw
+                    box.score = data[i][7]
                     detection_results.box3d_array.append(box)
                 detection_results.num_boxes = num_bboxes
                 detection_results.localization.utm_x = x   

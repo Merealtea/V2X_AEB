@@ -99,12 +99,14 @@ class center_visualization:
         rospy.Subscriber('fusion_results', DetectionResults, self.fusion_detection_callback)
         self.original_pub = rospy.Publisher('original_marker', MarkerArray, queue_size=10)
         self.fusion_pub = rospy.Publisher('fusion_marker', MarkerArray, queue_size=10)
+
         config_path = os.path.abspath(__file__).split('CenterServer')[0] + '/common/config/center_vis_config.rviz'
         os.system(f'rosrun rviz rviz -d {config_path}')
 
 
 
     def original_detection_callback(self, msg):
+
         vehicle_localization = msg.localization
         x, y, z = vehicle_localization.utm_x, \
             vehicle_localization.utm_y, \

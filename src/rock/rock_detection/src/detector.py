@@ -140,12 +140,14 @@ class Detector:
 
         if hasattr(result['boxes_3d'], 'tensor'):
             bbox = result['boxes_3d'].tensor.cpu().numpy()[:, :7]
+            scores = result['scores_3d'].scores.cpu().numpy()
         else:
             bbox = result['boxes_3d'].numpy()[:, :7]
+            scores = result['scores_3d'].numpy()
 
         # Demo code
         results = DetectionResults()
-        for box in bbox:
+        for box, score in zip(bbox, scores):
             box_msg = Box3D()
             box_msg.center_x = box[0]
             box_msg.center_y = box[1]
@@ -154,6 +156,7 @@ class Detector:
             box_msg.length = box[4]
             box_msg.height = box[5]
             box_msg.heading = box[6]
+            box_msg.score = score
 
             results.box3d_array.append(box_msg)
 
