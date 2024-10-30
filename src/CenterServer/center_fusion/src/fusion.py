@@ -28,10 +28,11 @@ class DetectionFusion:
         self.vehicle_sort = {}
         self.original_res_pub = rospy.Publisher('original_results', DetectionResults, queue_size=10)
         self.vehicle_res_dict = {}
-        # thread = threading.Thread(target=self.send_fusion)
-        # thread.start()
-        # thread.join()
         self.prev_time = {}
+        
+        thread = threading.Thread(target=self.send_fusion)
+        thread.start()
+        thread.join()
 
     def track_callback(self, msg):
         vehicle_id = msg.vehicle_id
@@ -91,9 +92,9 @@ class DetectionFusion:
 
         for vehicle_id, msg in self.vehicle_res_dict.items():
             if vehicle_id == "rock":
-                vehicle_id = 100
+                vehicle_id = -1
             else:
-                vehicle_id = 200
+                vehicle_id = -2
             vehicle_box = Box3D()
             vehicle_box.center_x = msg.localization.utm_x
             vehicle_box.center_y = msg.localization.utm_y
@@ -114,19 +115,19 @@ class DetectionFusion:
         ####################################################
         # DEBUG
         # tracker prediction
-        track_msg= DetectionResults()
-        for id in tracker_res:
-            box = Box3D()
-            box.center_x = tracker_res[id][0]
-            box.center_y = tracker_res[id][1]
-            box.center_z = tracker_res[id][2]
-            box.width = tracker_res[id][3]
-            box.length = tracker_res[id][4]
-            box.height = tracker_res[id][5]
-            box.heading = tracker_res[id][6]
-            box.id = id
-            track_msg.box3d_array.append(box)
-        self.fusion_result_pub.publish(track_msg)
+        # track_msg= DetectionResults()
+        # for id in tracker_res:
+        #     box = Box3D()
+        #     box.center_x = tracker_res[id][0]
+        #     box.center_y = tracker_res[id][1]
+        #     box.center_z = tracker_res[id][2]
+        #     box.width = tracker_res[id][3]
+        #     box.length = tracker_res[id][4]
+        #     box.height = tracker_res[id][5]
+        #     box.heading = tracker_res[id][6]
+        #     box.id = id
+        #     track_msg.box3d_array.append(box)
+        # self.fusion_result_pub.publish(track_msg)
         ####################################################
 
     def send_fusion(self):
@@ -171,6 +172,7 @@ class DetectionFusion:
                     box.width = bbox_array[mask, 3].mean()
                     box.length = bbox_array[mask, 4].mean()
                     box.height = 1.75
+                    box.id = i
                     # TODO: yaw should be calculated by the direction of the vehicle
                     box.heading = 0
                     fusion_results.box3d_array.append(box) 

@@ -83,16 +83,26 @@ def create_text_marker(id, text, x, y, z, frame_id="world"):
 
     return text_marker
 
+def delete_marker(id):
+    marker = Marker()
+    marker.id = id
+    marker.action = Marker.DELETE
+    return marker
+
 class center_visualization:
     def __init__(self):
         rospy.init_node('center_visualization', anonymous=True)
         self.init_position = None
+        self.prev_max_id = None
+        self.prev_max_pre_id = None
         rospy.Subscriber('original_results', DetectionResults, self.original_detection_callback)
         rospy.Subscriber('fusion_results', DetectionResults, self.fusion_detection_callback)
         self.original_pub = rospy.Publisher('original_marker', MarkerArray, queue_size=10)
         self.fusion_pub = rospy.Publisher('fusion_marker', MarkerArray, queue_size=10)
         config_path = os.path.abspath(__file__).split('CenterServer')[0] + '/common/config/center_vis_config.rviz'
         os.system(f'rosrun rviz rviz -d {config_path}')
+
+
 
     def original_detection_callback(self, msg):
         vehicle_localization = msg.localization
@@ -109,24 +119,33 @@ class center_visualization:
             x -= self.init_position[0]; y -= self.init_position[1]
             heading = box.heading
             height, width, length = box.height, box.width, box.length
+            
+            if id == -1:
+                vehicle_id = create_text_marker(i + 2 * num + 1, 'rock', x, y, z + height / 2 + 0.1)
+                person_markers.markers.append(vehicle_id)
+                person_color = (1.0, 1.0, 0.0, 0.8)
+            elif id == -2:
+                vehicle_id = create_text_marker(i + 2 * num + 1, 'hycan', x, y, z + height / 2 + 0.1)
+                person_markers.markers.append(vehicle_id)
+                person_color = (1.0, 0.0, 1.0, 0.8)
+            else:
+                person_id = create_text_marker(i + 2 * num + 1, str(id), x, y, z + height / 2 + 0.1)
+                person_markers.markers.append(person_id)
+
             if width > 2:
                 color = (1.0, 0.0, 0.0, 0.8)
             else:
-                color = (0.0, 1.0, 0.0, 0.8)
+                color = person_color
             person_marker = create_marker(i + 1, (x, y, z), tf.quaternion_from_euler(0, 0, heading), (width, length, height), color=color)
             person_arrow = create_arrow_marker(i + num + 1, x, y, heading, 1.0)
             person_markers.markers.append(person_marker)
             person_markers.markers.append(person_arrow)
-            print("id: ", id)
-            if id == 100:
-                vehicle_id = create_text_marker(i + 2 * num + 1, 'rock', x, y, z + height / 2 + 0.1)
-                person_markers.markers.append(vehicle_id)
-            elif id == 200:
-                vehicle_id = create_text_marker(i + 2 * num + 1, 'hycan', x, y, z + height / 2 + 0.1)
-                person_markers.markers.append(vehicle_id)
-            else:
-                person_id = create_text_marker(i + 2 * num + 1, str(id), x, y, z + height / 2 + 0.1)
-                person_markers.markers.append(person_id)
+
+        prev_max_id = len(person_markers.markers) + 1
+        if self.prev_max_id:
+            for i in range(len(person_markers.markers) + 1, self.prev_max_id + 1):
+                person_markers.markers.append(delete_marker(i))
+        self.prev_max_id = prev_max_id
         
         # merge the two markers
         self.original_pub.publish(person_markers)
@@ -145,8 +164,15 @@ class center_visualization:
             person_arrow = create_arrow_marker(i + 1 + num, x, y, heading, 1.0)
             person_id = create_text_marker(i +1 + 2 * num , str(id), x, y, z + height / 2 + 0.1)
             person_markers.markers.append(person_marker)
-            # person_markers.markers.append(person_arrow)
+            person_markers.markers.append(person_arrow)
             person_markers.markers.append(person_id)
+
+        prev_max_pre_id = len(person_markers.markers) + 1
+
+        if self.prev_max_pre_id:
+            for i in range(len(person_markers.markers) + 1, self.prev_max_pre_id + 1):
+                person_markers.markers.append(delete_marker(i))
+        self.prev_max_pre_id = prev_max_pre_id
 
         self.fusion_pub.publish(person_markers)
         rospy.loginfo("Fusion results published with {} boxes".format(len(person_markers.markers)))

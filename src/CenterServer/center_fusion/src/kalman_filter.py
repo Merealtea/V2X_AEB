@@ -71,23 +71,29 @@ def bev_box_overlap(boxes, qboxes, criterion=-1):
     riou = rotate_iou_gpu_eval(boxes, qboxes, criterion)
     return riou
 
+def min_bbox(bbox_width, bbox_height):
+    """
+    Get the minimum width and height of the bbox
+    """
+    min_width = 0.4
+    min_length = 0.2
+    max_width = 0.8
+    max_length = 0.4
+    if bbox_width < bbox_height:
+        bbox_width = min(max(bbox_width, min_length), max_length)
+        bbox_height = min(max(bbox_height, min_width), max_width)
+    else:
+        bbox_width = min(max(bbox_width, min_width), max_width)
+        bbox_height = min(max(bbox_height, min_length), max_length)
+    return bbox_width, bbox_height
+
 def convert_bbox_to_bev(bbox):
   """
     The 3d bbox is in the form [x,y,z,l,w,h,theta] 
     The 2d bbox is in the form [x,y,w,h,theta]
   """
   x, y, l, w, theta = bbox[0], bbox[1], bbox[3], bbox[4], bbox[6]
-  min_width = 0.4
-  min_length = 0.2
-
-  if l < w:
-      # 3 is length, 2 is width
-      w = max(w, min_width)
-      l = max(l, min_length)
-  else:
-      w = max(w, min_length)
-      l = max(l, min_width)
-
+  w, l = min_bbox(w, l)
   return np.array([x, y, l, w, theta]).reshape((5, 1))
 
 class KalmanBoxTracker(object):
@@ -113,7 +119,6 @@ class KalmanBoxTracker(object):
 
     self.kf.x[:5] = convert_bbox_to_bev(bbox)
 
-    self.kf.x[2:4] = max(self.kf.x[2], self.kf.x[3])
     init_velocities = 0
     heading = bbox[6]
     x_vel = init_velocities * np.cos(heading + np.pi)
@@ -167,6 +172,7 @@ class KalmanBoxTracker(object):
     self.time_since_update += td
     self.track_timestamp = timestamp
     self.update_timestamp = time.time()
+    self.kf.x[3], self.kf.x[2] = min_bbox(self.kf.x[3], self.kf.x[2])
     return self.kf.x[:5]
 
   def get_state(self):
@@ -177,7 +183,7 @@ class KalmanBoxTracker(object):
     new_x = np.zeros((7, 1))
     new_x[:2] = x[:2]
     new_x[2] = self.center_z
-    new_x[3:5] = x[2:4]
+    new_x[4], new_x[3] = min_bbox(x[3], x[2])
     new_x[5] = self.height
     new_x[6] = x[4]
     return new_x
@@ -197,9 +203,10 @@ class KalmanBoxTracker(object):
     new_predcit_x = np.zeros((7, 1))
     new_predcit_x[:2] = predict_x[:2]
     new_predcit_x[2] = self.center_z
-    new_predcit_x[3:5] = predict_x[2:4]
+    new_predcit_x[4], new_predcit_x[3] = min_bbox(predict_x[3], predict_x[2])
     new_predcit_x[5] = self.height
     new_predcit_x[6] = predict_x[4]
+    print("new predict x is ", new_predcit_x)
     return new_predcit_x
 
 def associate_detections_to_trackers(detections,trackers,cost_threshold = 0.3):
@@ -249,7 +256,7 @@ def associate_detections_to_trackers(detections,trackers,cost_threshold = 0.3):
 
 
 class Sort(object):
-  def __init__(self, vehicle_id, localization, max_age=1, min_hits=3, iou_threshold=0.5):
+  def __init__(self, vehicle_id, localization, max_age=1, min_hits=3, iou_threshold=0.7):
     """
      Every vehicle has its own SORT tracker
     """
