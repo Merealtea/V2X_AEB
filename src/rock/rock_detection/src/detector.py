@@ -33,7 +33,7 @@ class Detector:
         self.mean = np.ascontiguousarray(np.broadcast_to(np.array([123.675, 116.28, 103.53]).reshape(1, 3, 1, 1), (4, 3, 368, 640)))
         self.std = np.ascontiguousarray(np.broadcast_to(np.array([58.395, 57.12, 57.375]).reshape(1, 3, 1, 1), (4, 3, 368, 640)))
 
-        self.use_trt = False
+        self.use_trt = True
         if not self.use_trt:
             self.detector = build_detector(config)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -43,7 +43,7 @@ class Detector:
             self.detector.bbox_head_3d.test_cfg = {
                 "use_rotate_nms" : True,
                 "nms_across_levels" : False,
-                "nms_thr" : 0.05,
+                "nms_thr" : 0.02,
                 "score_thr" : 0.4,
                 "min_bbox_size" : 0,
                 "nms_pre" : 500,
@@ -57,7 +57,7 @@ class Detector:
 
             trt_path = ckpt_path.replace('.pth', '.engine')
             self.cfx = cuda.Device(0).make_context()
-            self.detector = TRTModel(trt_path, 0.4, 0.05)
+            self.detector = TRTModel(trt_path, 0.3, 0.02)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             rospy.loginfo("TensorRT model is loaded")
 
@@ -140,7 +140,7 @@ class Detector:
 
         if hasattr(result['boxes_3d'], 'tensor'):
             bbox = result['boxes_3d'].tensor.cpu().numpy()[:, :7]
-            scores = result['scores_3d'].scores.cpu().numpy()
+            scores = result['scores_3d'].cpu().numpy()
         else:
             bbox = result['boxes_3d'].numpy()[:, :7]
             scores = result['scores_3d'].numpy()

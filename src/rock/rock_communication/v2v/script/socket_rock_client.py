@@ -16,7 +16,8 @@ import numpy as np
 import rospkg
 import threading
 import sys
-src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+import os
+src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 sys.path.append(src_path)
 from common.Mono3d.configs.FisheyeParam.lidar_model import Lidar_transformation
 
@@ -93,10 +94,11 @@ class SocketClient:
                            msg.box3d_array[i].width, msg.box3d_array[i].length, msg.box3d_array[i].height,
                            msg.box3d_array[i].heading, msg.box3d_array[i].score]
                     boxes_array.append(box)
-
-                boxes_array[:,:3] = self.lidar_model.lidar_to_rear(boxes_array[:,:3].T).T
+                boxes_array = np.array(boxes_array)
+                if len(boxes_array) > 0:
+                    boxes_array[:,:3] = self.lidar_model.lidar_to_rear(boxes_array[:,:3].T).T
                 
-                boxes_array = np.array(boxes_array, dtype=np.float32).tobytes()
+                boxes_array = boxes_array.astype(np.float32).tobytes()
                 count = len(boxes_array)
                 image_stamp = msg.image_stamp.to_sec() 
                 cur_stamp = time.time()
