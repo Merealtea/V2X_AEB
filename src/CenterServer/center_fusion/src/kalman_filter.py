@@ -315,10 +315,11 @@ class Sort(object):
         print("hit times is ", trk.hit_streak)
         i -= 1
         # remove dead tracklet
-        if(trk.time_since_update > self.max_age):
+        if(trk.time_since_update > min((self.max_age + trk.hit_streak * 0.1), 2)):
           self.trackers.pop(i)
-        elif trk.hit_streak >= self.min_hits:
-          track_res[trk.id] = trk.get_state().reshape((7, 1))
+        ##### DEBUG
+        # elif trk.hit_streak >= self.min_hits:
+        track_res[trk.id] = trk.get_state().reshape((7, 1))
     return updated_res, track_res
 
   def predict(self, timestamp):
@@ -327,7 +328,10 @@ class Sort(object):
     """
     predcitions = {}
     for tracker in self.trackers:
-        if timestamp - tracker.update_timestamp < self.max_age:
+        if timestamp - tracker.update_timestamp < self.max_age and tracker.hit_streak >= self.min_hits:
           position = tracker.predict_without_update(timestamp)
           predcitions[tracker.id] = position
+        if timestamp - tracker.update_timestamp >= min((self.max_age + tracker.hit_streak * 0.1), 4):
+          self.trackers.remove(tracker)
+
     return predcitions

@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="rock_comm" type="rock_tracker_node" name="rock_tracker" output="screen"/>
+</launch>
