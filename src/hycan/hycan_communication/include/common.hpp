@@ -32,7 +32,7 @@ typedef struct{
    int32_t height_no_pad;
    int32_t original_width;
    int32_t original_height;
-   float32_t ratio;
+   float_t ratio;
    double stamp;
    char data[RESIZED_IMG_SIZE] {};
 } IMAGE_ELEMENT;

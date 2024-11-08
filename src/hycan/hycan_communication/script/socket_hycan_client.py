@@ -19,7 +19,7 @@ import rospkg
 class SocketClient:
     def __init__(self, local_host, local_port, remote_host, remote_port):
         rospy.init_node('Hycan_client', anonymous=True)
-        rospy.Subscriber('hycan_detection_results', DetectionResults, self._transimit_results)
+        rospy.Subscriber('hycan_track_results', DetectionResults, self._transimit_results)
         self._connected = False
         self.target_host = remote_host
         self.target_port = remote_port
@@ -81,9 +81,11 @@ class SocketClient:
             if self._connected:
                 boxes_array = []
                 for i in range(msg.num_boxes):
-                    box = [msg.box3d_array[i].center_x, msg.box3d_array[i].center_y, msg.box3d_array[i].center_z,
-                           msg.box3d_array[i].width, msg.box3d_array[i].length, msg.box3d_array[i].height,
-                           msg.box3d_array[i].heading, msg.box3d_array[i].score]
+                    box = msg.box3d_array[i]
+                    box = [box.center_x, box.center_y, box.center_z,
+                           box.width, box.length, box.height,
+                           box.heading, box.speed_x, box.speed_y,
+                           box.speed_angle, box.score]
                     boxes_array.append(box)
                 print(boxes_array)
                 boxes_array = np.array(boxes_array, dtype=np.float32).tobytes()

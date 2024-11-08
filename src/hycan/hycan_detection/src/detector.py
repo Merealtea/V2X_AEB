@@ -17,9 +17,6 @@ import torch
 import rospkg
 from time import time
 from hycan.hycan_detection.src.shm import Images_Shared_Memory
-from common.Mono3d.tools.inference_test import TRTModel
-from pycuda import driver as cuda
-import pycuda.autoinit
 
 class Detector:
     def __init__(self, config_path, ckpt_path):
@@ -36,18 +33,30 @@ class Detector:
         self.mean = np.ascontiguousarray(np.broadcast_to(np.array([123.675, 116.28, 103.53]).reshape(1, 3, 1, 1), (4, 3, 368, 640)))
         self.std = np.ascontiguousarray(np.broadcast_to(np.array([58.395, 57.12, 57.375]).reshape(1, 3, 1, 1), (4, 3, 368, 640)))
         
-        self.use_trt = True
+        self.use_trt = False
         if not self.use_trt:
             self.detector = build_detector(config)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            self.detector.load_state_dict(torch.load(ckpt_path))
+            self.detector.load_state_dict(torch.load(ckpt_path, map_location=self.device))
             self.detector.to(self.device)
             self.detector.eval()
+            self.detector.bbox_head_3d.test_cfg = {
+                "use_rotate_nms" : True,
+                "nms_across_levels" : False,
+                "nms_thr" : 0.02,
+                "score_thr" : 0.2,
+                "min_bbox_size" : 0,
+                "nms_pre" : 500,
+                "max_num" : 100
+            }
             rospy.loginfo("Pytorch model is loaded")
         else:
+            from common.Mono3d.tools.inference_test import TRTModel
+            from pycuda import driver as cuda
+            import pycuda.autoinit
             trt_path = ckpt_path.replace('.pth', '.engine')
             self.cfx = cuda.Device(0).make_context()
-            self.detector = TRTModel(trt_path, 0.5, 0.05)
+            self.detector = TRTModel(trt_path, 0.3, 0.05)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             rospy.loginfo("TensorRT model is loaded")
         

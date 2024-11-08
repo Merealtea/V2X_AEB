@@ -22,7 +22,9 @@ find_package(catkin REQUIRED COMPONENTS
 # find_package(Boost REQUIRED COMPONENTS system)
 set(OpenCV_DIR "/usr/share/opencv4")
 find_package(OpenCV 4 REQUIRED)
+find_package(Eigen3 3.3 REQUIRED)
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
+include_directories(${EIGEN3_INCLUDE_DIR})
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -118,9 +120,10 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
+  # ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 ## Declare a C++ library
@@ -167,11 +170,6 @@ catkin_install_python(PROGRAMS
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
-catkin_install_python(PROGRAMS
-  script/trajectory_visualization.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
 # install(TARGETS ${PROJECT_NAME}_node
@@ -186,6 +184,18 @@ target_link_libraries(img_proc_node
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
   rt
+)
+
+add_executable(hycan_tracker_node
+  src/hycan_tracker.cpp
+  src/tracker.cpp
+  src/Hungarian.cpp
+)
+
+# 添加链接库
+target_link_libraries(hycan_tracker_node
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
 )
 
 

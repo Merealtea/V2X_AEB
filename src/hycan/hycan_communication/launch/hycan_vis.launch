@@ -1,3 +1,0 @@
-<launch>
-    <node pkg="hycan_comm" type="trajectory_visualization.py" name="hycan_vis" output="screen"/>
-</launch>

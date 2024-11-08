@@ -14,10 +14,8 @@ from scipy.spatial.transform import Rotation as R
 
 rospy.init_node('merge_bag')
 
-# lidar bag path
-lidar_bag_path = "/home/cxy/Desktop/lidar_calib/left_lidar.bag"
 # camera_bag_path
-camera_bag_path = "/home/cxy/Desktop/lidar_calib/left.bag"
+camera_bag_path = "/mnt/pool1/ground_truth_generator/data/camera_data/2024-10-30-10-40-12_Hycan.bag"
 
 front_camera_subsriber = Subscriber('/miivii_gmsl_ros/camera1/compressed', CompressedImage)
 back_camera_subsriber = Subscriber('/miivii_gmsl_ros/camera2/compressed', CompressedImage)
@@ -57,27 +55,25 @@ hycan_rear = np.array([[1.0, 0.0, 0.0, 1.426],
 np.savetxt("hycan_rear.csv", hycan_rear, delimiter=",")
                        
 
-lidar_calib = np.array([[0.0, 1.0, 0.0, -0.1],
-                        [1.0, 0.0, 0.0, 0.35],
-                        [0.0, 0.0, 1.0, 1.83],
+lidar_calib = np.array([[0.0, 1.0, 0.0, -0.05],
+                        [1.0, 0.0, 0.0, 0.33],
+                        [0.0, 0.0, 1.0, 1.81],
                         [0.0, 0.0, 0.0, 1.0]])
 euler = np.array([89.3, 0.7, 179.5])
 rotation = R.from_euler('zyx', euler, degrees=True)
 lidar_calib[:3, :3] = rotation.as_matrix()
 # Saveth the calibration matrix as csv file
 np.savetxt("lidar_calib.csv", lidar_calib, delimiter=",")
-# import pdb; pdb.set_trace()
+import pdb; pdb.set_trace()
 
-lidar_bag = rosbag.Bag(lidar_bag_path, 'r')
 camera_bag = rosbag.Bag(camera_bag_path, 'r')
 
-lidar_msgs = lidar_bag.read_messages(['/livox/lidar'])
-camera_msgs = camera_bag.read_messages(['/miivii_gmsl_ros/camera1/compressed',
+camera_msgs = camera_bag.read_messages(['/livox/lidar',
+                                        '/miivii_gmsl_ros/camera1/compressed',
                                         '/miivii_gmsl_ros/camera2/compressed',
                                         '/miivii_gmsl_ros/camera3/compressed',
                                         '/miivii_gmsl_ros/camera4/compressed'])
 
-merged_msgs = sorted(list(lidar_msgs) + list(camera_msgs), key=lambda x: x[2])  # 按时间戳排序
 # lidar points to camera coordinate system
 
 def callback(lidar_msg, front_camera_msg, back_camera_msg, left_camera_msg, right_camera_msg):
@@ -138,7 +134,7 @@ for dir in cam_models:
 sync = ApproximateTimeSynchronizer([lidar_subscriber, front_camera_subsriber, back_camera_subsriber, left_camera_subsriber, right_camera_subsriber], queue_size=10, slop=0.1)
 sync.registerCallback(callback)
 
-for topic, msg, t in merged_msgs:
+for topic, msg, t in camera_msgs:
     if topic == '/livox/lidar':
         lidar_subscriber.signalMessage(msg)
     elif topic == '/miivii_gmsl_ros/camera1/compressed':

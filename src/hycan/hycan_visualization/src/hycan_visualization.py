@@ -69,18 +69,19 @@ class ImageSubscriber:
             bboxes = []
             img = self.image_sequence[direction][0]
             cam_model = self.cam_models[direction]
+            if len(box_array) > 0:
+                box = cam_model.world2cam(box_array[:, :3].T).T
+                depth = box[:, 0]
+                box_cam = box_array[depth > 0.05]
+                corners = calculate_corners(box_cam).reshape(-1, 3)
+                corners = cam_model.world2cam(corners.T)
+                corners[0][corners[0] < 0.05] = 0.05
 
-            depth = cam_model.world2cam(box_array[:, :3].T).T[:, 0]
-            box_cam = box_array[depth > 0.05]
-            corners = calculate_corners(box_cam).reshape(-1, 3)
-            corners = cam_model.world2cam(corners.T)
-            corners[0][corners[0] < 0.05] = 0.05
-
-            corners = corners.T.reshape(-1, 8, 3)
-            for corner in corners:
-                pixel_uv = cam_model.cam2image(corner.T).T
-                bboxes.append(pixel_uv)
-            img = plot_rect3d_on_img(img, len(bboxes), bboxes, color=(0, 0, 255))
+                corners = corners.T.reshape(-1, 8, 3)
+                for corner in corners:
+                    pixel_uv = cam_model.cam2image(corner.T).T
+                    bboxes.append(pixel_uv)
+                img = plot_rect3d_on_img(img, len(bboxes), bboxes, color=(0, 0, 255))
             if direction == "front":
                 concat_img[:720, :1280] = img
             elif direction == "back":

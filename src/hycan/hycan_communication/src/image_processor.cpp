@@ -67,7 +67,9 @@ public:
         int original_height;
         int new_width;
         int new_height;
-        float32_t ratio;
+        int pad_width;
+        int pad_height;
+        float_t ratio;
 
         ros::Time st_time = ros::Time::now();
 
@@ -87,17 +89,13 @@ public:
             new_width = original_width * ratio;
             new_height = original_height * ratio;
 
-            ROS_INFO("Original Image Size: %d x %d", original_width, original_height);
-            ROS_INFO("New Image Size: %d x %d", new_width, new_height);
-
             // 1. 先resize
             cv::resize(cv_image, cv_image, cv::Size(new_width, new_height), 0, 0, cv::INTER_LINEAR);  // 缩放到640x480
             
             // Check the new width and height is the multiple of pad_size
-            int pad_width = (new_width + pad_size_ - 1) / pad_size_ * pad_size_ - new_width;
-            int pad_height = (new_height + pad_size_ - 1) / pad_size_ * pad_size_ - new_height;
+            pad_width = (new_width + pad_size_ - 1) / pad_size_ * pad_size_ - new_width;
+            pad_height = (new_height + pad_size_ - 1) / pad_size_ * pad_size_ - new_height;
 
-            ROS_INFO("Pad Size: %d x %d", pad_width, pad_height);
             // 2. 填充图像
             cv::copyMakeBorder(cv_image, cv_image, 0, pad_height, 0, pad_width, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
 
@@ -114,11 +112,13 @@ public:
             resized_img[i].ratio = ratio;
             resized_img[i].stamp = st_time.toSec(); // DEBUG
 
-            ROS_INFO("Image %d: %d x %d", i, resized_img[i].width, resized_img[i].height);
-            ROS_INFO("Timestamp is %f", resized_img[i].stamp);
             memcpy(&resized_img[i].data, cv_image.data, RESIZED_IMG_SIZE);
         }
-
+        ROS_INFO("Original Image Size: %d x %d", original_width, original_height);
+        ROS_INFO("New Image Size: %d x %d", new_width, new_height);
+        ROS_INFO("Pad Size: %d x %d", pad_width, pad_height);
+        ROS_INFO("Image: %d x %d",  resized_img[0].width, resized_img[0].height);
+        ROS_INFO("Timestamp is %f", resized_img[0].stamp);
         frame_idx++;
 
         // 将处理后的图像存入共享内存

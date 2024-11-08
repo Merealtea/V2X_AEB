@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="hycan_comm" type="hycan_tracker_node" name="hycan_tracker" output="screen"/>
+</launch>
