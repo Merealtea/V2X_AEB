@@ -84,7 +84,7 @@ class SocketClient:
                     box = msg.box3d_array[i]
                     box = [box.center_x, box.center_y, box.center_z,
                            box.width, box.length, box.height,
-                           box.heading, box.speed_x, box.speed_y,
+                           box.heading, box.id, box.speed_x, box.speed_y,
                            box.speed_angle, box.score]
                     boxes_array.append(box)
                 print(boxes_array)

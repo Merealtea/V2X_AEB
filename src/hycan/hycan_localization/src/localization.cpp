@@ -33,7 +33,7 @@ public:
         double convergence_angle = delta_lon * sin(gps_msg->latitude * RADIANS_PER_DEGREE);
         // convergence_angle *= DEGREES_PER_RADIAN;
 
-        double corrected_heading = heading_msg->data + M_PI + convergence_angle;
+        double corrected_heading = heading_msg->data + M_PI;// + convergence_angle;
         ROS_INFO("Corrected Heading: %f radians", corrected_heading);
 
         hycan_msgs::Localization localization_msg;
