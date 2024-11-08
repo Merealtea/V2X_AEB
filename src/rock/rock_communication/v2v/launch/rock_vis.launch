@@ -1,3 +1,0 @@
-<launch>
-    <node pkg="rock_comm" type="trajectory_visualization.py" name="rock_vis" output="screen"/>
-</launch>

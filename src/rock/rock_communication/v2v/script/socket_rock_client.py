@@ -24,7 +24,7 @@ from common.Mono3d.configs.FisheyeParam.lidar_model import Lidar_transformation
 class SocketClient:
     def __init__(self, local_host, local_port, remote_host, remote_port):
         rospy.init_node('Rock_client', anonymous=True)
-        rospy.Subscriber('/rock_detection_results', DetectionResults, self._transimit_results)
+        rospy.Subscriber('/rock_track_results', DetectionResults, self._transimit_results)
         self._connected = False
         self.target_host = remote_host
         self.target_port = remote_port
@@ -33,8 +33,6 @@ class SocketClient:
         self.local_port = local_port
 
         self.idx = 0
-
-        self.lidar_model = Lidar_transformation("Rock")
 
         self.fmt = "ddiIIddd"
         self.get_fmt_length()
@@ -90,15 +88,12 @@ class SocketClient:
             if self._connected:
                 boxes_array = []
                 for i in range(msg.num_boxes):
-                    box = [msg.box3d_array[i].center_x, msg.box3d_array[i].center_y, msg.box3d_array[i].center_z,
-                           msg.box3d_array[i].width, msg.box3d_array[i].length, msg.box3d_array[i].height,
-                           msg.box3d_array[i].heading, msg.box3d_array[i].score]
+                    box = msg.box3d_array[i]
+                    box = [box.center_x, box.center_y, box.center_z,
+                           box.width, box.length, box.height,
+                           box.heading, box.score, box.id, box.speed_x, box.speed_y, box.speed_angle]
                     boxes_array.append(box)
-                boxes_array = np.array(boxes_array)
-                if len(boxes_array) > 0:
-                    boxes_array[:,:3] = self.lidar_model.lidar_to_rear(boxes_array[:,:3].T).T
-                
-                boxes_array = boxes_array.astype(np.float32).tobytes()
+                boxes_array = np.array(boxes_array).astype(np.float32).tobytes()
                 count = len(boxes_array)
                 image_stamp = msg.image_stamp.to_sec() 
                 cur_stamp = time.time()

@@ -119,10 +119,13 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
+find_package(Eigen3 3.3 REQUIRED)
+
 include_directories(
-  "include"
+  include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIR}
 )
 
 add_executable(img_proc_node
@@ -135,6 +138,17 @@ target_link_libraries(img_proc_node
   rt
 )
 
+add_executable(rock_tracker_node
+  src/rock_tracker.cpp
+  src/tracker.cpp
+  src/Hungarian.cpp
+)
+
+# 添加链接库
+target_link_libraries(rock_tracker_node
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -179,12 +193,6 @@ catkin_install_python(PROGRAMS
   script/socket_rock_client.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
-
-catkin_install_python(PROGRAMS
-  script/trajectory_visualization.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
