@@ -86,9 +86,9 @@ public:
         for(int i = 0; i < assignment_predict.size(); i++) {
             if(assignment_predict[i] != -1) {
                 hycan_msgs::Box3D box;
-                box.center_x = boundingBoxes[i].postion(0);
-                box.center_y = boundingBoxes[i].postion(1);
-                box.center_z = boundingBoxes[i].postion(2);
+                box.center_x = boundingBoxes[i].position(0);
+                box.center_y = boundingBoxes[i].position(1);
+                box.center_z = boundingBoxes[i].position(2);
                 box.width = boundingBoxes[i].size(0);
                 box.length = boundingBoxes[i].size(1);
                 box.height = boundingBoxes[i].size(2);
@@ -97,7 +97,21 @@ public:
                 box.speed_x = SORT.trackers[i].velocity_estimate(0);
                 box.speed_y = SORT.trackers[i].velocity_estimate(1);
                 box.speed_angle = SORT.trackers[i].velocity_estimate(2);
-                
+                track_res.box3d_array.push_back(box);
+            }
+            else if(assignment_predict[i] == -1 && SORT.trackers[i].comfirmed) {
+                hycan_msgs::Box3D box;
+                box.center_x = bbox_predicted[i].position(0);
+                box.center_y = bbox_predicted[i].position(1);
+                box.center_z = bbox_predicted[i].position(2);
+                box.width = bbox_predicted[i].size(0);
+                box.length = bbox_predicted[i].size(1);
+                box.height = bbox_predicted[i].size(2);
+                box.heading = bbox_predicted[i].theta;
+                box.id = SORT.trackers[i].tracker_id;
+                box.speed_x = SORT.trackers[i].velocity_estimate(0);
+                box.speed_y = SORT.trackers[i].velocity_estimate(1);
+                box.speed_angle = SORT.trackers[i].velocity_estimate(2);
                 track_res.box3d_array.push_back(box);
             }
         }

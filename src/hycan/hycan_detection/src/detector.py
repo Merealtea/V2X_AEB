@@ -56,7 +56,7 @@ class Detector:
             import pycuda.autoinit
             trt_path = ckpt_path.replace('.pth', '.engine')
             self.cfx = cuda.Device(0).make_context()
-            self.detector = TRTModel(trt_path, 0.3, 0.05)
+            self.detector = TRTModel(trt_path, 0.25, 0.02)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             rospy.loginfo("TensorRT model is loaded")
         
@@ -99,6 +99,7 @@ class Detector:
         # start time
         st = time()
         rospy.loginfo("Received hycan images")
+
         frame_idxs, imgs, camera_ids, \
             width_no_pad, height_no_pad, \
                 original_width, original_height, \

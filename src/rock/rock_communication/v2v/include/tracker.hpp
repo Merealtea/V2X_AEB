@@ -15,7 +15,7 @@
 
 class BoundingBox {
 public:
-    Eigen::Vector3f postion;
+    Eigen::Vector3f position;
     Eigen::Vector3f size;
     double theta;
     Eigen::Vector3f velocity;
@@ -38,7 +38,7 @@ public:
 
     BoundingBox(Eigen::Vector3f position, Eigen::Vector3f size, 
                 double theta, Eigen::Vector3f velocity = Eigen::Vector3f::Zero()) {
-        this->postion = position;
+        this->position = position;
         this->size = scale_bbox(size);
         this->theta = theta;
         this->velocity = velocity;
@@ -49,7 +49,6 @@ class Tracker {
 public:
     // tracker id
     int tracker_id = 0;
-    int my_intensity = 0;
     int time_since_update = 0;
     int hit_count = 0;
 

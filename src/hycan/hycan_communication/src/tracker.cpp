@@ -7,7 +7,6 @@
 
 void Tracker::init(int id, double stamp) {
     tracker_id = id;
-    my_intensity = rand() % 255;
 
     int state_dim = 10;
     int measure_dim = 7;
@@ -47,7 +46,7 @@ void Tracker::init(int id, double stamp) {
 
     // 定义测量噪声协方差矩阵R
     cv::setIdentity(kf->measurementNoiseCov);
-    kf->measurementNoiseCov *= 2.0;
+    kf->measurementNoiseCov *= 2;
     kf->measurementNoiseCov.at<float>(3, 3) = 0.1;
 
     cv::setIdentity(kf->errorCovPost, cv::Scalar::all(0.1));
@@ -166,7 +165,7 @@ void MOT3D::update(std::vector<BoundingBox> &bbox_observed, std::vector<int> ass
     for(int i = 0; i < assignment_predict.size(); i++) {
         if(assignment_predict[i] == -1)
             continue;
-        trackers[i].update(bbox_observed[assignment_predict[i]].postion, bbox_observed[assignment_predict[i]].size, bbox_observed[assignment_predict[i]].theta);
+        trackers[i].update(bbox_observed[assignment_predict[i]].position, bbox_observed[assignment_predict[i]].size, bbox_observed[assignment_predict[i]].theta);
     }
 }
 
@@ -185,7 +184,7 @@ void MOT3D::birthAndDeath(std::vector<BoundingBox> &bbox_observed,
 
             Eigen::Vector3f position, size;
             double theta;
-            position = bbox_observed[i].postion;
+            position = bbox_observed[i].position;
             size = bbox_observed[i].size;
             theta = bbox_observed[i].theta;
 
@@ -216,8 +215,10 @@ void MOT3D::birthAndDeath(std::vector<BoundingBox> &bbox_observed,
         } else {
             trackers[i].time_since_update = 0;
             trackers[i].hit_count ++;
+            if (trackers[i].hit_count > min_hits) 
+                trackers[i].comfirmed = true;
         }
-        if(trackers[i].time_since_update > 10) {
+        if(trackers[i].time_since_update > max_age) {
             trackers.erase(trackers.begin() + i);
             assignment_predict.erase(assignment_predict.begin() + i);
         }
@@ -236,7 +237,7 @@ void DataAssociation(std::vector<BoundingBox> bbox_observed, std::vector<Boundin
 
     for (int i = 0; i < n_predicted; i++) {
         for (int j = 0; j < n_observed; j++) {
-            Eigen::Vector3f diff = bbox_predicted[i].postion - bbox_observed[j].postion;
+            Eigen::Vector3f diff = bbox_predicted[i].position - bbox_observed[j].position;
             Eigen::Vector3f diff_size = bbox_predicted[i].size - bbox_observed[j].size;
             float distance = diff.norm() + 0.5 * diff_size.norm();
             cost_matrix[i][j] = distance;

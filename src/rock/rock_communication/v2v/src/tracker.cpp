@@ -4,10 +4,8 @@
 
 #include "tracker.hpp"
 
-
 void Tracker::init(int id, double stamp) {
     tracker_id = id;
-    my_intensity = rand() % 255;
 
     int state_dim = 10;
     int measure_dim = 7;
@@ -166,7 +164,7 @@ void MOT3D::update(std::vector<BoundingBox> &bbox_observed, std::vector<int> ass
     for(int i = 0; i < assignment_predict.size(); i++) {
         if(assignment_predict[i] == -1)
             continue;
-        trackers[i].update(bbox_observed[assignment_predict[i]].postion, bbox_observed[assignment_predict[i]].size, bbox_observed[assignment_predict[i]].theta);
+        trackers[i].update(bbox_observed[assignment_predict[i]].position, bbox_observed[assignment_predict[i]].size, bbox_observed[assignment_predict[i]].theta);
     }
 }
 
@@ -185,7 +183,7 @@ void MOT3D::birthAndDeath(std::vector<BoundingBox> &bbox_observed,
 
             Eigen::Vector3f position, size;
             double theta;
-            position = bbox_observed[i].postion;
+            position = bbox_observed[i].position;
             size = bbox_observed[i].size;
             theta = bbox_observed[i].theta;
 
@@ -236,7 +234,7 @@ void DataAssociation(std::vector<BoundingBox> bbox_observed, std::vector<Boundin
 
     for (int i = 0; i < n_predicted; i++) {
         for (int j = 0; j < n_observed; j++) {
-            Eigen::Vector3f diff = bbox_predicted[i].postion - bbox_observed[j].postion;
+            Eigen::Vector3f diff = bbox_predicted[i].position - bbox_observed[j].position;
             Eigen::Vector3f diff_size = bbox_predicted[i].size - bbox_observed[j].size;
             float distance = diff.norm() + 0.5 * diff_size.norm();
             cost_matrix[i][j] = distance;
