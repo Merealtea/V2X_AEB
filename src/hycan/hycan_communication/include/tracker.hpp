@@ -81,7 +81,6 @@ public:
     int min_hits = 5;
     int id_count = 0;
 
-
     // 定义Tracker列表
     std::vector<Tracker> trackers;
 
