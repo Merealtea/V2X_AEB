@@ -19,6 +19,7 @@ public:
     Eigen::Vector3f size;
     double theta;
     Eigen::Vector3f velocity;
+    double score = 0;
 
     float min_width = 0.4, min_length = 0.2, min_height = 1.5;
     float max_width = 0.6, max_length = 0.3, max_height = 2.0;
@@ -37,11 +38,13 @@ public:
     }
 
     BoundingBox(Eigen::Vector3f position, Eigen::Vector3f size, 
-                double theta, Eigen::Vector3f velocity = Eigen::Vector3f::Zero()) {
+                double theta, double score = 0,
+                Eigen::Vector3f velocity = Eigen::Vector3f::Zero()) {
         this->position = position;
         this->size = scale_bbox(size);
         this->theta = theta;
         this->velocity = velocity;
+        this->score = score;
     }
 };
 
@@ -69,7 +72,8 @@ public:
 
     void predict(Eigen::Vector3f &position, Eigen::Vector3f &size, double &theta,
                     Eigen::Vector3f &velocity, double stamp);
-    void update(Eigen::Vector3f position, Eigen::Vector3f size, double theta);
+    void update(Eigen::Vector3f position, Eigen::Vector3f size,
+                 double theta, double score);
 };
 
 class MOT3D {

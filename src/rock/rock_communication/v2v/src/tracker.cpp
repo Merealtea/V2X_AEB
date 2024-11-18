@@ -4,6 +4,7 @@
 
 #include "tracker.hpp"
 
+
 void Tracker::init(int id, double stamp) {
     tracker_id = id;
 
@@ -29,7 +30,7 @@ void Tracker::init(int id, double stamp) {
     // 定义测量矩阵H
     // measurement matrix, dim_z * dim_x, the first 7 dimensions of the measurement correspond to the state
     kf->measurementMatrix = (cv::Mat_<float>(7, 10) <<
-                                                    1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
@@ -39,14 +40,14 @@ void Tracker::init(int id, double stamp) {
 
     // 定义过程噪声协方差矩阵Q
     cv::setIdentity(kf->processNoiseCov, cv::Scalar::all(1));
-    kf->processNoiseCov.at<float>(7, 7) *= 0.05;
-    kf->processNoiseCov.at<float>(8, 8) *= 0.05;
-    kf->processNoiseCov.at<float>(9, 9) *= 0.05;
+    kf->processNoiseCov.at<float>(7, 7) *= 0.5;
+    kf->processNoiseCov.at<float>(8, 8) *= 0.5;
+    kf->processNoiseCov.at<float>(9, 9) *= 0.5;
 
     // 定义测量噪声协方差矩阵R
     cv::setIdentity(kf->measurementNoiseCov);
-    kf->measurementNoiseCov *= 2.0;
-    kf->measurementNoiseCov.at<float>(3, 3) = 0.1;
+    kf->measurementNoiseCov *= 1;
+    kf->measurementNoiseCov.at<float>(3, 3) = 1;
 
     cv::setIdentity(kf->errorCovPost, cv::Scalar::all(0.1));
 
@@ -57,7 +58,6 @@ void Tracker::init(int id, double stamp) {
 
 void Tracker::predict(Eigen::Vector3f &position, Eigen::Vector3f &size, 
                         double &theta, Eigen::Vector3f &velocity, double stamp) {
-    // predict
     cv::Mat prediction = kf->predict();
 
     position(0) = prediction.at<float>(0);
@@ -131,6 +131,9 @@ void Tracker::update(Eigen::Vector3f position,
     measurement.at<float>(6) = size(2);
 
     cv::Mat estimated = kf->correct(measurement);
+
+    // kf->statePost.at<float>(0) = position(0);
+    // kf->statePost.at<float>(1) = position(1);
 
     // update the state
     position_estimate(0) = estimated.at<float>(0);
@@ -214,8 +217,10 @@ void MOT3D::birthAndDeath(std::vector<BoundingBox> &bbox_observed,
         } else {
             trackers[i].time_since_update = 0;
             trackers[i].hit_count ++;
+            if (trackers[i].hit_count > min_hits) 
+                trackers[i].comfirmed = true;
         }
-        if(trackers[i].time_since_update > 10) {
+        if(trackers[i].time_since_update > max_age) {
             trackers.erase(trackers.begin() + i);
             assignment_predict.erase(assignment_predict.begin() + i);
         }
@@ -251,7 +256,7 @@ void DataAssociation(std::vector<BoundingBox> bbox_observed, std::vector<Boundin
     vector<int> Assignment;
     double cost = hungarian.Solve(cost_matrix, Assignment);
 
-    double distance_threshold = 1.0;
+    double distance_threshold = 1;
 
     for (int i = 0; i < n_predicted; i++) {
         if(Assignment[i] == -1)

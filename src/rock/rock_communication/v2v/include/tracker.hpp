@@ -52,6 +52,8 @@ public:
     int time_since_update = 0;
     int hit_count = 0;
 
+    bool comfirmed = false;
+
     Eigen::Vector3f position_estimate = Eigen::Vector3f::Zero();
     Eigen::Vector3f size_estimate = Eigen::Vector3f::Zero();
     double theta_estimate = 0;
@@ -75,10 +77,9 @@ public:
     MOT3D() {};
     ~MOT3D() {};
 
-    int max_age = 20;
+    int max_age = 10;
     int min_hits = 5;
     int id_count = 0;
-
 
     // 定义Tracker列表
     std::vector<Tracker> trackers;

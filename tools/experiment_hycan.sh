@@ -1,4 +1,5 @@
 rosbag record \
+	-b 40960 \
 	/strong/fix \
     /strong/heading \
 	/miivii_gmsl_ros/camera1/compressed \
@@ -6,6 +7,7 @@ rosbag record \
 	/miivii_gmsl_ros/camera3/compressed \
 	/miivii_gmsl_ros/camera4/compressed \
 	/livox/lidar \
-    /hycan_detection_results
+    /hycan_detection_results \
+	/hycan_track_results 
 
 

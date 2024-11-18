@@ -9,7 +9,6 @@ Panels:
         - /MarkerArray1
         - /MarkerArray2
         - /MarkerArray3
-        - /MarkerArray4
       Splitter Ratio: 0.5
     Tree Height: 549
   - Class: rviz/Selection
@@ -55,20 +54,12 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /hycan/vehicle
-      Name: Marker
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /hycan/detection
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -76,7 +67,7 @@ Visualization Manager:
       Marker Topic: /hycan/track
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -85,6 +76,14 @@ Visualization Manager:
       Name: MarkerArray
       Namespaces:
         {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /hycan/vehicle
+      Name: MarkerArray
+      Namespaces:
+        "": true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -115,7 +114,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 10
+      Distance: 14.049280166625977
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -131,9 +130,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.785398006439209
+      Pitch: 1.299796223640442
       Target Frame: <Fixed Frame>
-      Yaw: 0.785398006439209
+      Yaw: 3.928581953048706
     Saved: ~
 Window Geometry:
   Displays:

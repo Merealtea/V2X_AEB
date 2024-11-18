@@ -11,7 +11,7 @@ import scipy
 class Visualization:
     def __init__(self):
         rospy.init_node('hycan_vis', anonymous=True)
-        self.veh_pub = rospy.Publisher('/hycan/vehicle', Marker, queue_size=10)
+        self.veh_pub = rospy.Publisher('/hycan/vehicle', MarkerArray, queue_size=10)
         self.det_pub = rospy.Publisher('/hycan/detection', MarkerArray, queue_size=10)
         self.track_pub = rospy.Publisher('/hycan/track', MarkerArray, queue_size=10)
         self.fusion_pub = rospy.Publisher('/hycan/fusion', MarkerArray, queue_size=10)
@@ -109,6 +109,8 @@ class Visualization:
         marker.header.frame_id = "map"
         marker.type = marker.TEXT_VIEW_FACING
         marker.action = marker.ADD
+        marker.scale.x = 0.25
+        marker.scale.y = 0.25
         marker.scale.z = 0.25
         marker.lifetime = rospy.Duration(0.2)
 
@@ -126,6 +128,20 @@ class Visualization:
         marker.text = text
         return marker
 
+    def vehicle_arrow(self):
+        marker = Marker()
+        marker.header.frame_id = "map"
+        marker.id = 100
+        marker.type = marker.ARROW
+        marker.action = marker.ADD
+        marker.scale.x = 1
+        marker.scale.y = 0.2
+        marker.scale.z = 0.2
+        marker.color.a = 1.0
+        marker.color.r = 0.0
+        marker.color.g = 1.0
+        marker.color.b = 1.0
+        return marker
 
     def vehicle_marker(self):
         marker = Marker()
@@ -133,9 +149,9 @@ class Visualization:
         marker.id = 0
         marker.type = marker.CUBE
         marker.action = marker.ADD
-        marker.scale.x = 4.9  # 长度
+        marker.scale.x = 4.6  # 长度
         marker.scale.y = 1.9  # 宽度
-        marker.scale.z = 1.7  # 高度，设为一个较小的值
+        marker.scale.z = 1.8  # 高度，设为一个较小的值
         marker.color.a = 1.0  # Alpha, 1表示完全不透明
         marker.color.r = 1.0  # 红色
         marker.color.g = 1.0  # 绿色
@@ -143,6 +159,7 @@ class Visualization:
         return marker
 
     def callback(self, msg : Localization):
+        marker_array = MarkerArray()
         x = msg.utm_x; y = msg.utm_y; yaw = msg.heading #- np.pi / 2
 
         self.init_x = x
@@ -150,11 +167,12 @@ class Visualization:
         self.yaw = yaw
 
         marker = self.vehicle_marker()
+        arrow = self.vehicle_arrow()
 
         marker.header.stamp = rospy.Time.now()
-        marker.pose.position.x = 0
-        marker.pose.position.y = 0
-        marker.pose.position.z = 0.85  # 高度，设为一个较小的值
+        marker.pose.position.x = 1.4259 * np.cos(yaw) # center to rear axix
+        marker.pose.position.y = 1.4259 * np.sin(yaw) # center to rear axix
+        marker.pose.position.z = 0.9  # 高度，设为一个较小的值
 
         # 设置方向
         orientation = scipy.spatial.transform.Rotation.from_euler('zyx', [yaw, 0, 0]).as_quat()
@@ -163,7 +181,18 @@ class Visualization:
         marker.pose.orientation.z = orientation[2]
         marker.pose.orientation.w = orientation[3]
         
-        self.veh_pub.publish(marker)
+        arrow.header.stamp = rospy.Time.now()
+        arrow.pose.position.x = 0
+        arrow.pose.position.y = 0
+        arrow.pose.position.z = 1.8
+        arrow.pose.orientation.x = orientation[0]
+        arrow.pose.orientation.y = orientation[1]
+        arrow.pose.orientation.z = orientation[2]
+        arrow.pose.orientation.w = orientation[3]
+
+        marker_array.markers.append(marker)
+        marker_array.markers.append(arrow)
+        self.veh_pub.publish(marker_array)
 
 if __name__ == '__main__':
     node = Visualization()

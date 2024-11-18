@@ -163,6 +163,7 @@ class Detector:
         results.num_boxes = len(bbox)
         results.localization = msg
         results.image_stamp = rospy.Time.from_sec(timestamp)
+        results.header.stamp = results.image_stamp
         results.vehicle_id = self.vehicle
         results.frame_idx = frame_idxs[0]
 
