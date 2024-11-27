@@ -97,9 +97,9 @@ public:
 
             // 转换到世界坐标系
             position_lidar = tf_matrix * position_lidar;
-            position_lidar(2) = z;
+            position(2) = box.center_z;
 
-            BoundingBox bbox(position_lidar, size, mod_angle(box.heading + heading + lidar2GPS_yaw));
+            BoundingBox bbox(position_lidar, size, mod_angle(box.heading + heading + lidar2GPS_yaw), box.score);
             boundingBoxes.push_back(bbox);
         }
 

@@ -56,7 +56,7 @@ class Detector:
             import pycuda.autoinit
             trt_path = ckpt_path.replace('.pth', '.engine')
             self.cfx = cuda.Device(0).make_context()
-            self.detector = TRTModel(trt_path, 0.6, 0.02)
+            self.detector = TRTModel(trt_path, 0.6, 0.02, box_code_size=config['test_cfg']['box_code_size'])
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             rospy.loginfo("TensorRT model is loaded")
         
@@ -145,10 +145,10 @@ class Detector:
             self.cfx.pop()
 
         if hasattr(result['boxes_3d'], 'tensor'):
-            bbox = result['boxes_3d'].tensor.cpu().numpy()[:, :7]
+            bbox = result['boxes_3d'].tensor.cpu().numpy()
             scores = result['scores_3d'].cpu().numpy()
         else:
-            bbox = result['boxes_3d'].numpy()[:, :7]
+            bbox = result['boxes_3d'].numpy()
             scores = result['scores_3d'].numpy()
 
         # Demo code
@@ -163,6 +163,8 @@ class Detector:
             box_msg.height = box[5]
             box_msg.heading = box[6]
             box_msg.score = score
+
+            rospy.loginfo("Detection result var: {}".format(box[7:9]))
 
             results.box3d_array.append(box_msg)
 

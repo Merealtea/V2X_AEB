@@ -9,6 +9,11 @@
 
 using namespace std;
 
+float mod_angle(float angle)
+{
+    // Restrict the angle within [-pi, pi]
+    angle = fmod(angle, 2 * M_PI);
+}
 
 class HycanTracker
 {
@@ -54,7 +59,7 @@ public:
             position = tf_matrix * position;
             position(2) = box.center_z;
 
-            BoundingBox bbox(position, size, box.heading + heading, box.score);
+            BoundingBox bbox(position, size, mod_angle(box.heading + heading), box.score);
 
             boundingBoxes.push_back(bbox);
         }

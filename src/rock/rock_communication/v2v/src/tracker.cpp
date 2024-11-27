@@ -40,14 +40,14 @@ void Tracker::init(int id, double stamp) {
 
     // 定义过程噪声协方差矩阵Q
     cv::setIdentity(kf->processNoiseCov, cv::Scalar::all(1));
-    kf->processNoiseCov.at<float>(7, 7) *= 0.5;
-    kf->processNoiseCov.at<float>(8, 8) *= 0.5;
-    kf->processNoiseCov.at<float>(9, 9) *= 0.5;
+    kf->processNoiseCov.at<float>(7, 7) *= 1;
+    kf->processNoiseCov.at<float>(8, 8) *= 1;
+    kf->processNoiseCov.at<float>(9, 9) *= 1;
 
     // 定义测量噪声协方差矩阵R
     cv::setIdentity(kf->measurementNoiseCov);
-    kf->measurementNoiseCov *= 1;
-    kf->measurementNoiseCov.at<float>(3, 3) = 1;
+    kf->measurementNoiseCov *= 0.5;
+    kf->measurementNoiseCov.at<float>(3, 3) = 0.5;
 
     cv::setIdentity(kf->errorCovPost, cv::Scalar::all(0.1));
 
@@ -114,11 +114,16 @@ void orientation_correction(double &theta_update, double theta) {
 
 void Tracker::update(Eigen::Vector3f position, 
                         Eigen::Vector3f size, 
-                            double theta) {
+                            double theta, double score) {
     double theta_measure = theta;
     cv::Mat prediction = kf->predict();
 
     double theta_pre = prediction.at<float>(3);
+
+    double var_noise = 3 * exp(-score);
+
+    kf->measurementNoiseCov = cv::Mat::eye(7, 7, CV_32F) * var_noise;
+    kf->measurementNoiseCov.at<float>(3, 3) = 1;
 
     cv::Mat measurement(7, 1, CV_32F);
     measurement.at<float>(0) = position(0);
@@ -157,7 +162,7 @@ void MOT3D::predict(std::vector<BoundingBox> &bbox_predicted, double stamp) {
         Eigen::Vector3f position, size, velocity;
         double theta;
         trackers[i].predict(position, size, theta, velocity, stamp);
-        BoundingBox bbox_pre(position, size, theta, velocity);
+        BoundingBox bbox_pre(position, size, theta, 0,velocity);
 
         bbox_predicted.emplace_back(bbox_pre);
     }
@@ -167,7 +172,10 @@ void MOT3D::update(std::vector<BoundingBox> &bbox_observed, std::vector<int> ass
     for(int i = 0; i < assignment_predict.size(); i++) {
         if(assignment_predict[i] == -1)
             continue;
-        trackers[i].update(bbox_observed[assignment_predict[i]].position, bbox_observed[assignment_predict[i]].size, bbox_observed[assignment_predict[i]].theta);
+        trackers[i].update(bbox_observed[assignment_predict[i]].position, 
+                        bbox_observed[assignment_predict[i]].size, 
+                        bbox_observed[assignment_predict[i]].theta,
+                        bbox_observed[assignment_predict[i]].score);
     }
 }
 
@@ -186,9 +194,11 @@ void MOT3D::birthAndDeath(std::vector<BoundingBox> &bbox_observed,
 
             Eigen::Vector3f position, size;
             double theta;
+            double score;
             position = bbox_observed[i].position;
             size = bbox_observed[i].size;
             theta = bbox_observed[i].theta;
+            score = bbox_observed[i].score;
 
             // x, y, z, theta, l, w, h, dx, dy, dz
             cv::Mat initial_state(10, 1, CV_32F);
@@ -206,7 +216,7 @@ void MOT3D::birthAndDeath(std::vector<BoundingBox> &bbox_observed,
             tracker.kf->statePost = initial_state;
 
             trackers.push_back(tracker);
-            trackers[trackers.size() - 1].update(position, size, theta);
+            trackers[trackers.size() - 1].update(position, size, theta, score);
             std::cout << "\033[33m" << "birth a new tracker: id " << id_count << "\033[0m" << std::endl;
 //            std::cout << "position: " << position.transpose() << " estimated: " << trackers[trackers.size() - 1].position_estimate.transpose() << std::endl;
         }
