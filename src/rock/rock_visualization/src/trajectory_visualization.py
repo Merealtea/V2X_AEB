@@ -66,7 +66,7 @@ class Visualization:
         for i in range(msg.num_boxes):
             box = msg.box3d_array[i]
             person_marker = self.person_marker(i, [0, 0, 1], box)
-            text_marker = self.text_marker(i + msg.num_boxes, f"{box[i].id}", box, [0, 0, 1])
+            text_marker = self.text_marker(i + msg.num_boxes, f"{box.id}", box, [0, 0, 1])
             marker_array.markers.append(person_marker)
             marker_array.markers.append(text_marker)
         if len(marker_array.markers) > 0:

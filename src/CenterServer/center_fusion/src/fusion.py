@@ -18,8 +18,66 @@ abs_path = os.path.dirname(__file__).split("fusion.py")[0]
 sys.path.append(abs_path)
 from copy import deepcopy
 from sklearn.cluster import DBSCAN
-import cv2
 from utils import nms_depth
+import deque
+
+def linear_assignment(cost_matrix):
+  try:
+    import lap
+    _, x, y = lap.lapjv(cost_matrix, extend_cost=True)
+    return np.array([[y[i],i] for i in x if i >= 0]) #
+  except ImportError:
+    from scipy.optimize import linear_sum_assignment
+    x, y = linear_sum_assignment(cost_matrix)
+    return np.array(list(zip(x, y)))
+
+def pairwise_assignment(track_array1, track_array2, cost_threshold):
+    """
+        track_array is [x, y, z, l, w, h, yaw, global_id, score]
+    """
+    
+    # calculate the cost matrix
+    track1_position = np.expand_dims(track_array1[:, :2], axis=1)
+    track2_position = np.expand_dims(track_array2[:, :2], axis=0)
+    cost_matrix = np.norm(track1_position - track2_position, dim=2)
+
+    # assign the track
+    if min(cost_matrix.shape) > 0:
+        a = (cost_matrix < cost_threshold).astype(np.int32)
+        if a.sum(1).max() == 1 and a.sum(0).max() == 1:
+            matched_indices = np.stack(np.where(a), axis=1)
+        else:
+            matched_indices = linear_assignment(cost_matrix)
+    else:
+        matched_indices = np.empty(shape=(0,2))
+
+    # assign the unmatched track
+    unmatched_track1 = []
+    unmatched_track2 = []
+    for t, trk in enumerate(track_array1):
+        if(d not in matched_indices[:,0]):
+            unmatched_track1.append(t)
+    
+    for t, trk in enumerate(track_array2):
+        if(t not in matched_indices[:,1]):
+            unmatched_track2.append(t)  
+
+    #filter out matched with low IOU
+    matches = []
+    for m in matched_indices:
+        if(cost_matrix[m[0], m[1]] > cost_threshold):
+            unmatched_track1.append(m[0])
+            unmatched_track2.append(m[1])
+        else:
+            matches.append(m.reshape(1,2))
+
+    if(len(matches)==0):
+        matches = np.empty((0,2),dtype=int)
+    else:
+        matches = np.concatenate(matches,axis=0)
+
+    return matches, np.array(unmatched_track1), np.array(unmatched_track2)
+
 
 class DetectionFusion:
     def __init__(self ):
@@ -31,8 +89,10 @@ class DetectionFusion:
         self.vehicle_res_dict = {}
         self.vehicle_track_dict = {}
         self.prev_time = {}
-        self.max_age = 0.5
-        self.search_range = 1
+        self.max_age = 2
+        self.max_history_len = 10
+        self.fusion_distance = 20
+
         self.angle_diff_threshold = 10 / 180 * np.pi
         self.score_diff_threshold = 0.1
 
@@ -58,39 +118,12 @@ class DetectionFusion:
 
         if vehicle_id not in self.prev_time:
             self.prev_time[vehicle_id] = msg.image_stamp.to_sec()
+            self.vehicle_res_dict[vehicle_id] = deque(maxlen=self.max_history_len)
         else:
             rospy.loginfo(f"vehicle {vehicle_id} Time delay between two frames is {(msg.image_stamp.to_sec() - self.prev_time[vehicle_id])}")
             self.prev_time[vehicle_id] = msg.image_stamp.to_sec()
-        
-        bbox_array = []
+
         rospy.loginfo(f"Receive {num_bboxes} bboxes in {frame_idx} from {vehicle_id}, time delay is {(msg.reciever.stamp - msg.image_stamp).to_sec()}" )
-        if num_bboxes > 0:
-            
-            for i in range(num_bboxes):
-                bbox = msg.box3d_array[i]
-                bbox_array.append([bbox.center_x, bbox.center_y, bbox.center_z, 
-                                   bbox.width, bbox.length, bbox.height, 
-                                   bbox.heading, bbox.score, bbox.id, 
-                                   bbox.speed_x, bbox.speed_y, bbox.speed_angle])
-            bbox_array = np.ascontiguousarray(
-                            np.array(bbox_array,
-                                    dtype=np.float32)).reshape(num_bboxes, -1)
-            
-            # keep = nms_depth(bbox_array, (localization.utm_x, localization.utm_y), self.angle_diff_threshold, self.score_diff_threshold)
-            # bbox_array = bbox_array[keep]
-            
-        # The true range of the map is 25m * 25m 
-        # res = 0.05
-        # height, width = 500, 500
-        # bev_figure = np.zeros((height, height, 3), dtype=np.uint8)
-
-        # track_res = dict(zip(
-        #     [int(box[8]) for box in bbox_array],
-        #     bbox_array
-        # ))
-
-        self.vehicle_track_dict[vehicle_id] = bbox_array
-
         # for person_id in track_res:
         #     x, y, z, w, l, h, yaw, score = track_res[person_id][:8]
         #     x = x - localization.utm_x
@@ -105,15 +138,16 @@ class DetectionFusion:
         # cv2.circle(bev_figure, (height // 2, width // 2), 5, (0, 0, 255), -1)
         # cv2.imwrite(os.path.join(self.debug_path, f"{frame_idx}_{vehicle_id}.png"), bev_figure)
             
-        self.vehicle_res_dict[vehicle_id] = msg
+        self.vehicle_res_dict[vehicle_id].append(msg)
         st = time.time()
         new_msg = DetectionResults()
 
-        for vehicle_id, msg in self.vehicle_res_dict.items():
+        for vehicle_id in self.vehicle_res_dict.keys():
             if vehicle_id == "rock":
                 vehicle_id = -1
             else:
                 vehicle_id = -2
+            msg = self.vehicle_res_dict[vehicle_id][-1]
             vehicle_box = Box3D()
             vehicle_box.center_x = msg.localization.utm_x
             vehicle_box.center_y = msg.localization.utm_y
@@ -137,46 +171,97 @@ class DetectionFusion:
         while not rospy.is_shutdown():
             cur_time = rospy.Time.now().to_sec()
             fusion_results = DetectionResults()
+            prediction_results = {}
+            vehicle_localization = []
+            vehicle_align_result = {}
 
-            if len(self.vehicle_track_dict) > 0:
+            for vehicle_id in self.vehicle_res_dict:
+                time_diff = cur_time - self.prev_time[vehicle_id]
+                if time_diff > self.max_age:
+                    continue
+
                 bbox_array = []
-                prediction_results = {}
+                localization = self.vehicle_res_dict[vehicle_id][-1].localization
+                vehicle_localization.append([localization.utm_x, localization.utm_y, localization.heading])
 
-                # predict the current state
-                for vehicle_id in self.vehicle_track_dict:
+                msg = self.vehicle_res_dict[vehicle_id][-1]
+                for i in range(msg.num_boxes):
+                    box = msg.box3d_array[i]
+                    bbox_array.append([box.center_x + time_diff * box.speed_x, 
+                                       box.center_y + time_diff * box.speed_y, 
+                                       box.center_z,
+                                       box.width, box.length, box.height,
+                                       box.heading, box.score, -1])
+                bbox_array = np.array(bbox_array, dtype=np.float32)
+                bbox_array = bbox_array.reshape(msg.num_boxes, -1)
 
-                    time_diff = cur_time - self.prev_time[vehicle_id]
-                    rospy.loginfo(f"Time diff for vehicle {vehicle_id} is {time_diff}")
-                    new_boxes = deepcopy(self.vehicle_track_dict[vehicle_id])
-                    new_boxes[:, [0,1,6]] = new_boxes[:, [0,1,6]] + time_diff * new_boxes[:, [9,10,11]]
-                    prediction_results[vehicle_id] = new_boxes
+                vehicle_align_result[vehicle_id] = bbox_array
 
-                # TODO: Find better algorithm
-                for vehicle_id in self.vehicle_track_dict:
-                    rospy.loginfo(f"Vehicle {vehicle_id} has {len(self.vehicle_track_dict[vehicle_id])} bboxes")
-                    bbox_array.append(prediction_results[vehicle_id])
-                bbox_array = np.concatenate(bbox_array, axis=0)
+            vehicle_localization = np.array(vehicle_localization)
+            distance = np.linalg.norm(np.expand_dims(vehicle_localization[:, :2], axis = 0) - 
+                                      np.expand_dims(vehicle_localization[:, :2], axis = 1), axis=2)
+            connection_graph = np.triu(distance < self.fusion_distance, 1)
+            edges = np.where(connection_graph)
+            vehicle_ids = list(self.vehicle_res_dict.keys())
 
-                # clustering the bbox_array
-                clustering = DBSCAN(eps=self.search_range, min_samples=1).fit(bbox_array[:, :2])
-                labels = clustering.labels_
-                unique_labels = np.unique(labels)
+            for i, j in zip(edges[0], edges[1]):
+                first_vehicle_id = vehicle_ids[i]
+                second_vehicle_id = vehicle_ids[j]
+
+                first_vehicle_bboxes = vehicle_align_result[first_vehicle_id]
+                second_vehicle_bboxes = vehicle_align_result[second_vehicle_id]
+
+                matched, unmatched_first, unmatched_second =\
+                      pairwise_assignment(deepcopy(first_vehicle_bboxes),
+                                           deepcopy(second_vehicle_bboxes), 1)
                 
-                for label in unique_labels:
-                    if label == -1:
-                        continue
-                    mask = labels == label
-                    box = Box3D()
-                    box.center_x = np.mean(bbox_array[mask, 0])
-                    box.center_y = np.mean(bbox_array[mask, 1])
-                    box.center_z = np.mean(bbox_array[mask, 2])
-                    box.width = np.mean(bbox_array[mask, 3])
-                    box.length = np.mean(bbox_array[mask, 4])
-                    box.height = np.mean(bbox_array[mask, 5])
-                    box.heading = np.mean(bbox_array[mask, 6])
-                    box.id = label
-                    fusion_results.box3d_array.append(box)
+                #  将所有相近的检测结果进行融合
+                for m in matched:
+                    box_1 = (first_vehicle_id, m[0])
+                    box_2 = (second_vehicle_id, m[1])
+                    if box_1 not in prediction_results:
+                        prediction_results[box_1] = {box_1}
+                    if box_2 not in prediction_results:
+                        prediction_results[box_2] = {box_2}
+                    prediction_results[box_1].add(box_2)
+                    prediction_results[box_2].add(box_1)
+                
+                for u in unmatched_first:
+                    box_1 = (first_vehicle_id, u)
+                    if box_1 not in prediction_results:
+                        prediction_results[box_1] = {box_1}
+                
+                for u in unmatched_second:
+                    box_2 = (second_vehicle_id, u)
+                    if box_2 not in prediction_results:
+                        prediction_results[box_2] = {box_2}
 
+            # 所有的匹配结果
+            all_matched = list(set(prediction_results.values()))
+
+            # 融合结果
+            for idx, matched in enumerate(all_matched):
+                box_array = []
+                for vehicle_id, box_id in matched:
+                    box = vehicle_align_result[vehicle_id][box_id]
+                    box_array.append(box)
+                box_array = np.array(box_array)
+                cluster_center = np.mean(box_array, axis=0)
+                distance = np.linalg.norm(box_array[:, :2] - cluster_center[:2], axis=1)
+                fusion_weight = distance / np.sum(distance)
+                fusion_box = np.sum(box_array * np.expand_dims(fusion_weight, axis=1), axis=0)
+
+                fusion_res = Box3D()
+                fusion_res.center_x = fusion_box[0]
+                fusion_res.center_y = fusion_box[1]
+                fusion_res.center_z = fusion_box[2]
+                fusion_res.width = fusion_box[3]
+                fusion_res.length = fusion_box[4]
+                fusion_res.height = fusion_box[5]
+                fusion_res.heading = fusion_box[6]
+                fusion_res.id = idx
+                fusion_results.box3d_array.append(fusion_res)
+            
             fusion_results.num_boxes = len(fusion_results.box3d_array)
             fusion_results.sender.stamp = rospy.Time.from_sec(cur_time)
             self.fusion_result_pub.publish(fusion_results)

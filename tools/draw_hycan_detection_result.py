@@ -80,8 +80,8 @@ def draw_boxes_callback(front_cam,
     
     localization = track_res.localization
     utm_x, utm_y, heading = localization.utm_x, localization.utm_y, localization.heading
-    # if vehicle != "Hycan":
-    # heading += np.pi / 2 
+    if vehicle != "Hycan":
+        heading += np.pi 
     if len(box_array) > 0:
     
         box_array[:, :2] = box_array[:, :2] - np.array([utm_x, utm_y])
@@ -90,8 +90,8 @@ def draw_boxes_callback(front_cam,
         box_array[:, :2] = (inv_mat @ box_array[:, :2].T).T
         box_array[:, 4] = box_array[:, 4] - heading
 
-        # if vehicle != "Hycan":
-        #     box_array[:, 1] += 0.5
+        if vehicle != "Hycan":
+            box_array[:, 1] += 0.5
 
         # if vehicle != "Hycan":
         #     box_array[:, :3] = lidar_model.rear_to_lidar(box_array[:, :3].T).T
