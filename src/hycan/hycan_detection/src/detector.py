@@ -33,7 +33,7 @@ class Detector:
         self.mean = np.ascontiguousarray(np.broadcast_to(np.array([123.675, 116.28, 103.53]).reshape(1, 3, 1, 1), (4, 3, 368, 640)))
         self.std = np.ascontiguousarray(np.broadcast_to(np.array([58.395, 57.12, 57.375]).reshape(1, 3, 1, 1), (4, 3, 368, 640)))
         
-        self.use_trt = False
+        self.use_trt = True
         if not self.use_trt:
             self.detector = build_detector(config)
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -56,7 +56,7 @@ class Detector:
             import pycuda.autoinit
             trt_path = ckpt_path.replace('.pth', '.engine')
             self.cfx = cuda.Device(0).make_context()
-            self.detector = TRTModel(trt_path, 0.3, 0.05)
+            self.detector = TRTModel(trt_path, 0.6, 0.02, box_code_size=config['test_cfg']['box_code_size'])
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             rospy.loginfo("TensorRT model is loaded")
         
@@ -99,6 +99,7 @@ class Detector:
         # start time
         st = time()
         rospy.loginfo("Received hycan images")
+
         frame_idxs, imgs, camera_ids, \
             width_no_pad, height_no_pad, \
                 original_width, original_height, \
@@ -144,10 +145,10 @@ class Detector:
             self.cfx.pop()
 
         if hasattr(result['boxes_3d'], 'tensor'):
-            bbox = result['boxes_3d'].tensor.cpu().numpy()[:, :7]
+            bbox = result['boxes_3d'].tensor.cpu().numpy()
             scores = result['scores_3d'].cpu().numpy()
         else:
-            bbox = result['boxes_3d'].numpy()[:, :7]
+            bbox = result['boxes_3d'].numpy()
             scores = result['scores_3d'].numpy()
 
         # Demo code
@@ -163,11 +164,14 @@ class Detector:
             box_msg.heading = box[6]
             box_msg.score = score
 
+            rospy.loginfo("Detection result var: {}".format(box[7:9]))
+
             results.box3d_array.append(box_msg)
 
         results.num_boxes = len(bbox)
         results.localization = msg
         results.image_stamp = rospy.Time.from_sec(timestamp)
+        results.header.stamp = results.image_stamp
         results.vehicle_id = self.vehicle
         results.frame_idx = frame_idxs[0]
 

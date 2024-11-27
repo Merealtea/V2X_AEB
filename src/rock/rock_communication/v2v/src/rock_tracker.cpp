@@ -23,8 +23,8 @@ public:
     {
         box_sub = nh_.subscribe("rock_detection_results", 1, &RockTracker::DetectionCallback, this);
         track_pub = nh_.advertise<hycan_msgs::DetectionResults>("rock_track_results", 1);
-        string pkg_path = ros::package::getPath("rock_communication");
-        string config_file = pkg_path + "../../common/Mono3d/configs/FisheyeParam/Rock/lidar/lidar_calib.csv";
+        string pkg_path = ros::package::getPath("rock_comm");
+        string config_file = pkg_path + "/../../../common/Mono3d/configs/FisheyeParam/Rock/lidar/lidar_calib.csv";
 
         lidar2GPS = Eigen::Matrix4f::Identity();
         ifstream file(config_file);
@@ -50,9 +50,11 @@ public:
         {
             ROS_ERROR("Cannot open the file %s", config_file.c_str());
         }
-
-        lidar2GPS = lidar2GPS.inverse();
+        ROS_INFO("Lidar to GPS transformation matrix is");
+        ROS_INFO_STREAM(lidar2GPS);
+        lidar2GPS = lidar2GPS.inverse().eval();
         lidar2GPS_yaw = mod_angle(atan2(lidar2GPS(1, 0), lidar2GPS(0, 0)));
+        ROS_INFO("Lidar to GPS yaw is %f", lidar2GPS_yaw);
     }
 
     void DetectionCallback(const hycan_msgs::DetectionResults::ConstPtr &msg)
@@ -89,14 +91,15 @@ public:
 
             // 转换到激光雷达坐标系
             position = lidar2GPS * position;
+            double z = position(2);
             position(2) = 1;
             Eigen::Vector3f position_lidar = position.head(3); 
 
             // 转换到世界坐标系
             position_lidar = tf_matrix * position_lidar;
-            position_lidar(2) = box.center_z;
+            position(2) = box.center_z;
 
-            BoundingBox bbox(position_lidar, size, mod_angle(box.heading + heading + lidar2GPS_yaw));
+            BoundingBox bbox(position_lidar, size, mod_angle(box.heading + heading + lidar2GPS_yaw), box.score);
             boundingBoxes.push_back(bbox);
         }
 
@@ -120,25 +123,25 @@ public:
         ROS_INFO("There are %d trackers after Birth and death", SORT.trackers.size());
         // 输出id结果
         hycan_msgs::DetectionResults track_res;
+        track_res.header = msg->header;
         track_res.frame_idx = msg->frame_idx;
         track_res.image_stamp = msg->image_stamp;
         track_res.localization = msg->localization;
 
         for(int i = 0; i < assignment_predict.size(); i++) {
-            if(assignment_predict[i] != -1) {
+            if(assignment_predict[i] != -1 || SORT.trackers[i].comfirmed) {
                 hycan_msgs::Box3D box;
-                box.center_x = boundingBoxes[i].postion(0);
-                box.center_y = boundingBoxes[i].postion(1);
-                box.center_z = boundingBoxes[i].postion(2);
-                box.width = boundingBoxes[i].size(0);
-                box.length = boundingBoxes[i].size(1);
-                box.height = boundingBoxes[i].size(2);
-                box.heading = boundingBoxes[i].theta;
+                box.center_x = bbox_predicted[i].position(0);
+                box.center_y = bbox_predicted[i].position(1);
+                box.center_z = bbox_predicted[i].position(2);
+                box.width = bbox_predicted[i].size(0);
+                box.length = bbox_predicted[i].size(1);
+                box.height = bbox_predicted[i].size(2);
+                box.heading = bbox_predicted[i].theta;
                 box.id = SORT.trackers[i].tracker_id;
                 box.speed_x = SORT.trackers[i].velocity_estimate(0);
                 box.speed_y = SORT.trackers[i].velocity_estimate(1);
                 box.speed_angle = SORT.trackers[i].velocity_estimate(2);
-                
                 track_res.box3d_array.push_back(box);
             }
         }

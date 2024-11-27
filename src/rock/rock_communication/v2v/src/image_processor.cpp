@@ -111,7 +111,7 @@ public:
             resized_img[i].original_width = original_width;
             resized_img[i].original_height = original_height;
             resized_img[i].ratio = ratio;
-            resized_img[i].stamp = st_time.toSec();
+            resized_img[i].stamp = msgs[i]->header.stamp.toSec(); //st_time.toSec();
 
             ROS_INFO("Image %d: %d x %d", i, resized_img[i].width, resized_img[i].height);
             ROS_INFO("Timestamp is %f", resized_img[i].stamp);

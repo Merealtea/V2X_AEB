@@ -15,10 +15,11 @@
 
 class BoundingBox {
 public:
-    Eigen::Vector3f postion;
+    Eigen::Vector3f position;
     Eigen::Vector3f size;
     double theta;
     Eigen::Vector3f velocity;
+    double score = 0;
 
     float min_width = 0.4, min_length = 0.2, min_height = 1.5;
     float max_width = 0.6, max_length = 0.3, max_height = 2.0;
@@ -37,11 +38,13 @@ public:
     }
 
     BoundingBox(Eigen::Vector3f position, Eigen::Vector3f size, 
-                double theta, Eigen::Vector3f velocity = Eigen::Vector3f::Zero()) {
-        this->postion = position;
+                double theta, double score = 0,
+                Eigen::Vector3f velocity = Eigen::Vector3f::Zero()) {
+        this->position = position;
         this->size = scale_bbox(size);
         this->theta = theta;
         this->velocity = velocity;
+        this->score = score;
     }
 };
 
@@ -49,9 +52,10 @@ class Tracker {
 public:
     // tracker id
     int tracker_id = 0;
-    int my_intensity = 0;
     int time_since_update = 0;
     int hit_count = 0;
+
+    bool comfirmed = false;
 
     Eigen::Vector3f position_estimate = Eigen::Vector3f::Zero();
     Eigen::Vector3f size_estimate = Eigen::Vector3f::Zero();
@@ -68,7 +72,8 @@ public:
 
     void predict(Eigen::Vector3f &position, Eigen::Vector3f &size, double &theta,
                     Eigen::Vector3f &velocity, double stamp);
-    void update(Eigen::Vector3f position, Eigen::Vector3f size, double theta);
+    void update(Eigen::Vector3f position, Eigen::Vector3f size,
+                 double theta, double score);
 };
 
 class MOT3D {
@@ -76,10 +81,9 @@ public:
     MOT3D() {};
     ~MOT3D() {};
 
-    int max_age = 20;
+    int max_age = 10;
     int min_hits = 5;
     int id_count = 0;
-
 
     // 定义Tracker列表
     std::vector<Tracker> trackers;

@@ -27,7 +27,7 @@ class ImageSubscriber:
             os.makedirs(os.path.join(src_path, '../debug'))
             rospy.loginfo("Created {} directory".format(os.path.join(src_path, 'debug')))
 
-        detection_sub = rospy.Subscriber('hycan_detection_results', DetectionResults, self.detection_callback)
+        rospy.Subscriber('hycan_detection_results', DetectionResults, self.detection_callback)
 
         self.ts = ApproximateTimeSynchronizer([front_sub, back_sub, right_sub, left_sub], queue_size=1, slop=0.1)
         self.ts.registerCallback(self.callback)
@@ -64,10 +64,9 @@ class ImageSubscriber:
         box_array = np.array(box_array)
 
         concat_img = np.zeros((720 * 2, 1280 * 2, 3), dtype=np.uint8)
-
         for direction in ["front", "back", "right", "left"]:
             bboxes = []
-            img = self.image_sequence[direction][0]
+            img = self.image_sequence[direction][0].copy()
             cam_model = self.cam_models[direction]
             if len(box_array) > 0:
                 box = cam_model.world2cam(box_array[:, :3].T).T
