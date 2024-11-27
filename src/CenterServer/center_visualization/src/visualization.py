@@ -11,6 +11,8 @@ def create_marker(id, position, orientation, scale, color=(0.0, 1.0, 0.0, 1.0)):
     marker.header.frame_id = "world"
     marker.type = Marker.CUBE
     marker.id = id
+    marker.action = Marker.ADD
+    marker.lifetime = rospy.Duration(0.2)
 
     marker.pose.position = Point(*position)
     marker.pose.orientation = Quaternion(*orientation)
@@ -31,6 +33,7 @@ def create_arrow_marker(id,x,y,yaw, length, frame_id="world"):
     marker.type = marker.ARROW
     marker.action = marker.ADD
     marker.id = id
+    marker.lifetime = rospy.Duration(0.2)
 
     # 起点和终点设置
     start_point = Point()
@@ -45,6 +48,7 @@ def create_arrow_marker(id,x,y,yaw, length, frame_id="world"):
 
     marker.points.append(start_point)
     marker.points.append(end_point)
+
 
     quaternion = tf.quaternion_from_euler(0, 0, 0)
     marker.pose.orientation = Quaternion(*quaternion)
@@ -68,6 +72,7 @@ def create_text_marker(id, text, x, y, z, frame_id="world"):
     text_marker.header.frame_id = frame_id
     text_marker.header.stamp = rospy.Time.now()
     text_marker.type = Marker.TEXT_VIEW_FACING
+    text_marker.lifetime = rospy.Duration(0.2)
     text_marker.action = Marker.ADD
     text_marker.pose.position.x = x
     text_marker.pose.position.y = y
@@ -82,12 +87,6 @@ def create_text_marker(id, text, x, y, z, frame_id="world"):
     text_marker.text = text
 
     return text_marker
-
-def delete_marker(id):
-    marker = Marker()
-    marker.id = id
-    marker.action = Marker.DELETE
-    return marker
 
 class center_visualization:
     def __init__(self):
@@ -104,7 +103,6 @@ class center_visualization:
         os.system(f'rosrun rviz rviz -d {config_path}')
 
 
-
     def original_detection_callback(self, msg):
 
         vehicle_localization = msg.localization
@@ -117,6 +115,7 @@ class center_visualization:
         num = len(msg.box3d_array)
         for i, box in enumerate(msg.box3d_array):
             id = box.id
+            score = box.score
             x, y, z = box.center_x, box.center_y, box.center_z
             x -= self.init_position[0]; y -= self.init_position[1]
             heading = box.heading
@@ -131,7 +130,8 @@ class center_visualization:
                 person_markers.markers.append(vehicle_id)
                 person_color = (1.0, 0.0, 1.0, 0.8)
             else:
-                person_id = create_text_marker(i + 2 * num + 1, str(id), x, y, z + height / 2 + 0.1)
+                rospy.loginfo("Person id: {}".format(id))
+                person_id = create_text_marker(i + 2 * num + 1, "{}".format(id), x, y, z + height / 2 + 0.1)
                 person_markers.markers.append(person_id)
 
             if width > 2:
@@ -141,12 +141,10 @@ class center_visualization:
             person_marker = create_marker(i + 1, (x, y, z), tf.quaternion_from_euler(0, 0, heading), (width, length, height), color=color)
             person_arrow = create_arrow_marker(i + num + 1, x, y, heading, 1.0)
             person_markers.markers.append(person_marker)
-            person_markers.markers.append(person_arrow)
+            # person_markers.markers.append(person_arrow)
 
         prev_max_id = len(person_markers.markers) + 1
-        if self.prev_max_id:
-            for i in range(len(person_markers.markers) + 1, self.prev_max_id + 1):
-                person_markers.markers.append(delete_marker(i))
+
         self.prev_max_id = prev_max_id
         
         # merge the two markers
@@ -162,18 +160,15 @@ class center_visualization:
             x -= self.init_position[0]; y -= self.init_position[1]
             heading = box.heading
             height, width, length = box.height, box.width, box.length
-            person_marker = create_marker(i + 1, (x, y, z), tf.quaternion_from_euler(0, 0, heading), (width, length, height), color=(0.0, 0.0, 1.0, 0.8))
-            person_arrow = create_arrow_marker(i + 1 + num, x, y, heading, 1.0)
-            person_id = create_text_marker(i +1 + 2 * num , str(id), x, y, z + height / 2 + 0.1)
+            person_marker = create_marker(id, (x, y, z), tf.quaternion_from_euler(0, 0, heading), (width, length, height), color=(0.0, 0.0, 1.0, 0.8))
+            # person_arrow = create_arrow_marker(i + 1 + num, x, y, heading, 1.0)
+            # person_id = create_text_marker(i +1 + 2 * num , str(id), x, y, z + height / 2 + 0.1)
             person_markers.markers.append(person_marker)
-            person_markers.markers.append(person_arrow)
-            person_markers.markers.append(person_id)
+            # person_markers.markers.append(person_arrow)
+            # person_markers.markers.append(person_id)
 
         prev_max_pre_id = len(person_markers.markers) + 1
-
-        if self.prev_max_pre_id:
-            for i in range(len(person_markers.markers) + 1, self.prev_max_pre_id + 1):
-                person_markers.markers.append(delete_marker(i))
+    
         self.prev_max_pre_id = prev_max_pre_id
 
         self.fusion_pub.publish(person_markers)

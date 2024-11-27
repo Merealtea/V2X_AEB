@@ -49,7 +49,6 @@ class DetectionFusion:
 
     def track_callback(self, msg):
         vehicle_id = msg.vehicle_id
-        localization = msg.localization
         num_bboxes = msg.num_boxes
         frame_idx = msg.frame_idx
         
@@ -63,7 +62,6 @@ class DetectionFusion:
             rospy.loginfo(f"vehicle {vehicle_id} Time delay between two frames is {(msg.image_stamp.to_sec() - self.prev_time[vehicle_id])}")
             self.prev_time[vehicle_id] = msg.image_stamp.to_sec()
         
-        update_res = {}
         bbox_array = []
         rospy.loginfo(f"Receive {num_bboxes} bboxes in {frame_idx} from {vehicle_id}, time delay is {(msg.reciever.stamp - msg.image_stamp).to_sec()}" )
         if num_bboxes > 0:
@@ -72,60 +70,44 @@ class DetectionFusion:
                 bbox = msg.box3d_array[i]
                 bbox_array.append([bbox.center_x, bbox.center_y, bbox.center_z, 
                                    bbox.width, bbox.length, bbox.height, 
-                                   bbox.heading, bbox.score, bbox.id, bbox.speed_x, bbox.speed_y, bbox.speed_angle])
+                                   bbox.heading, bbox.score, bbox.id, 
+                                   bbox.speed_x, bbox.speed_y, bbox.speed_angle])
             bbox_array = np.ascontiguousarray(
                             np.array(bbox_array,
                                     dtype=np.float32)).reshape(num_bboxes, -1)
             
-            keep = nms_depth(bbox_array, (localization.utm_x, localization.utm_y), self.angle_diff_threshold, self.score_diff_threshold)
-            bbox_array = bbox_array[keep]
+            # keep = nms_depth(bbox_array, (localization.utm_x, localization.utm_y), self.angle_diff_threshold, self.score_diff_threshold)
+            # bbox_array = bbox_array[keep]
             
-            if len(update_res) != len(bbox_array):
-                raise ValueError("The number of track results is not equal to the number of bboxes")
-
         # The true range of the map is 25m * 25m 
-        res = 0.05
-        height, width = 500, 500
-        bev_figure = np.zeros((height, height, 3), dtype=np.uint8)
+        # res = 0.05
+        # height, width = 500, 500
+        # bev_figure = np.zeros((height, height, 3), dtype=np.uint8)
 
-        track_res = dict(zip(
-            [int(box[8]) for box in bbox_array],
-            bbox_array
-        ))
+        # track_res = dict(zip(
+        #     [int(box[8]) for box in bbox_array],
+        #     bbox_array
+        # ))
 
-        self.track_res[vehicle_id] = track_res
+        self.vehicle_track_dict[vehicle_id] = bbox_array
 
-        for person_id in track_res:
-            x, y, z, w, l, h, yaw, score = track_res[person_id][:8]
-            x = x - localization.utm_x
-            y = y - localization.utm_y
-            x, y = int(x / res + height // 2), int(y / res + width // 2)
-            cv2.circle(bev_figure, (x, y), 5, (255, 0, 0), -1)
-            cv2.putText(bev_figure, "{}_{:.2f}".format(person_id,score), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        # for person_id in track_res:
+        #     x, y, z, w, l, h, yaw, score = track_res[person_id][:8]
+        #     x = x - localization.utm_x
+        #     y = y - localization.utm_y
+        #     x, y = int(x / res + height // 2), int(y / res + width // 2)
+        #     cv2.circle(bev_figure, (x, y), 5, (255, 0, 0), -1)
+        #     cv2.putText(bev_figure, "{}_{:.2f}".format(person_id,score), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
-            # draw line fron origin point to the bbox
-            cv2.line(bev_figure, (height // 2, width // 2), (x, y), (25, 200, 255), 1)
+        #     # draw line fron origin point to the bbox
+        #     cv2.line(bev_figure, (height // 2, width // 2), (x, y), (25, 200, 255), 1)
 
-        cv2.circle(bev_figure, (height // 2, width // 2), 5, (0, 0, 255), -1)
-        cv2.imwrite(os.path.join(self.debug_path, f"{frame_idx}_{vehicle_id}.png"), bev_figure)
+        # cv2.circle(bev_figure, (height // 2, width // 2), 5, (0, 0, 255), -1)
+        # cv2.imwrite(os.path.join(self.debug_path, f"{frame_idx}_{vehicle_id}.png"), bev_figure)
             
         self.vehicle_res_dict[vehicle_id] = msg
         st = time.time()
         new_msg = DetectionResults()
-
-        msg.box3d_array = []
-        for id in update_res:
-            box = Box3D()
-            box.center_x = update_res[id][0]
-            box.center_y = update_res[id][1]
-            box.center_z = update_res[id][2]
-            box.width = update_res[id][3]
-            box.length = update_res[id][4]
-            box.height = update_res[id][5]
-            # TODO: yaw should be calculated by the direction of the vehicle
-            box.heading = update_res[id][6]
-            box.id = id
-            msg.box3d_array.append(box) 
 
         for vehicle_id, msg in self.vehicle_res_dict.items():
             if vehicle_id == "rock":
@@ -146,29 +128,32 @@ class DetectionFusion:
                 new_msg.box3d_array.append(box)
 
         new_msg.localization = msg.localization
+        new_msg.num_boxes = len(new_msg.box3d_array)
         self.original_res_pub.publish(new_msg)
         rospy.loginfo("Publish original results with time {:4f}".format(time.time() - st))
 
     def send_fusion(self):
         rate = rospy.Rate(5)
         while not rospy.is_shutdown():
-            # TODO : Get prediction results from kalman filter
-            rospy.loginfo("Start to send fusion results, vehicle_sort is {}".format(len(self.vehicle_sort)))
+            cur_time = rospy.Time.now().to_sec()
+            fusion_results = DetectionResults()
+
             if len(self.vehicle_track_dict) > 0:
-                cur_time = rospy.Time.now().to_sec()
-                
                 bbox_array = []
                 prediction_results = {}
 
                 # predict the current state
                 for vehicle_id in self.vehicle_track_dict:
+
                     time_diff = cur_time - self.prev_time[vehicle_id]
+                    rospy.loginfo(f"Time diff for vehicle {vehicle_id} is {time_diff}")
                     new_boxes = deepcopy(self.vehicle_track_dict[vehicle_id])
-                    new_boxes[:, [0, 1, 6]] = new_boxes[:, [0, 1, 6]] + time_diff * new_boxes[:, [9, 10, 11]]
+                    new_boxes[:, [0,1,6]] = new_boxes[:, [0,1,6]] + time_diff * new_boxes[:, [9,10,11]]
                     prediction_results[vehicle_id] = new_boxes
 
                 # TODO: Find better algorithm
                 for vehicle_id in self.vehicle_track_dict:
+                    rospy.loginfo(f"Vehicle {vehicle_id} has {len(self.vehicle_track_dict[vehicle_id])} bboxes")
                     bbox_array.append(prediction_results[vehicle_id])
                 bbox_array = np.concatenate(bbox_array, axis=0)
 
@@ -176,7 +161,7 @@ class DetectionFusion:
                 clustering = DBSCAN(eps=self.search_range, min_samples=1).fit(bbox_array[:, :2])
                 labels = clustering.labels_
                 unique_labels = np.unique(labels)
-                fusion_results = DetectionResults()
+                
                 for label in unique_labels:
                     if label == -1:
                         continue
@@ -192,13 +177,12 @@ class DetectionFusion:
                     box.id = label
                     fusion_results.box3d_array.append(box)
 
-                fusion_results.num_boxes = len(fusion_results.box3d_array)
-                fusion_results.sender.stamp = rospy.Time.from_sec(cur_time)
+            fusion_results.num_boxes = len(fusion_results.box3d_array)
+            fusion_results.sender.stamp = rospy.Time.from_sec(cur_time)
+            self.fusion_result_pub.publish(fusion_results)
+            self.fusion_results = []
 
-                self.fusion_result_pub.publish(fusion_results)
-                self.fusion_results = []
-
-                rospy.loginfo("Send fusion results")
+            rospy.loginfo("Send fusion results")
 
             rate.sleep()
 

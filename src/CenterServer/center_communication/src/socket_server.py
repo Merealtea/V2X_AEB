@@ -132,14 +132,21 @@ class SocketServer:
                     box.width = data[i][3]
                     box.length = data[i][4]
                     box.height = data[i][5]
-                    box.heading = data[i][6] + yaw
+                    box.heading = data[i][6]
                     box.score = data[i][7]
-                    box.id = data[i][8]
+                    box.id = int(data[i][8])
                     box.speed_x = data[i][9]
                     box.speed_y = data[i][10]
                     box.speed_angle = data[i][11]
 
+                    if vehicle == 'hycan':
+                        offset = np.array([0.9, 0.3])
+                        yaw = yaw - np.pi/32
+                        box.center_x -= offset[0]*np.cos(yaw) - offset[1]*np.sin(yaw)
+                        box.center_y -= offset[0]*np.sin(yaw) + offset[1]*np.cos(yaw)
+                        yaw = yaw + np.pi/32
                     detection_results.box3d_array.append(box)
+                rospy.loginfo(f"BBox speed is {box.speed_x}, {box.speed_y}, {box.speed_angle}")
                 detection_results.num_boxes = num_bboxes
                 detection_results.localization.utm_x = x   
                 detection_results.localization.utm_y = y
@@ -171,7 +178,9 @@ class SocketServer:
                 fusion_msg.box3d_array[i].height,
                 fusion_msg.box3d_array[i].heading
             ])
-        
+        topic = '/final_fusion_results'
+        self.new_bag.write(topic, fusion_msg)
+
         fusion_result = np.array(fusion_result, np.float32).tobytes()
         header = struct.pack(self.fmt, fusion_msg.sender.stamp.to_sec(), time.time(), fusion_msg.num_boxes, 0, len(fusion_result), 0, 0, 0)
 
