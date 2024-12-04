@@ -15,8 +15,8 @@ from scipy.spatial.transform import Rotation as R
 rospy.init_node('merge_bag')
 
 # camera_bag_path
-camera_bag_path = "/mnt/pool1/ground_truth_generator/data/camera_data/2024-10-29-14-14-28_Rock.bag"
-lidar_bag_path = "/mnt/pool1/ground_truth_generator/data/lidar_data/2024-10-29-14-14-28_filter.bag"
+camera_bag_path = "/mnt/pool1/V2X_AEB/data/2024-11-28-15-21-48_Rock_calib.bag"
+lidar_bag_path = "/mnt/pool1/ground_truth_generator/data/lidar_data/2024-11-28-15-21-48_filter.bag"
 
 front_camera_subsriber = Subscriber('/driver/fisheye/front/compressed', CompressedImage)
 back_camera_subsriber = Subscriber('/driver/fisheye/back/compressed', CompressedImage)   
