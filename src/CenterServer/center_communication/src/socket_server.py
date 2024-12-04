@@ -113,13 +113,13 @@ class SocketServer:
                     data += client.recv(count - len(data))
             
                 rospy.loginfo(f"Receive data length: {len(data)}")
-                rospy.loginfo(f"Communication Time delay is {time.time()-send_timestamp}s")
-                rospy.loginfo(f"Total time delay is {rospy.Time().now().to_sec() -image_timestamp}s")
+                rospy.loginfo(f"Communication Time delay from {vehicle} is {time.time()-send_timestamp}s")
+                rospy.loginfo(f"Total time delay from {vehicle} is {rospy.Time().now().to_sec() -image_timestamp}s")
 
                 # Package the images and imu data into a ROS message
                 detection_results = DetectionResults()
                 if num_bboxes == 0:
-                    continue
+                    data = np.zeros([0, 1])
                 else:
                     data = np.ascontiguousarray(np.frombuffer(data, dtype=np.float32)).reshape(num_bboxes, -1)
 
@@ -146,7 +146,7 @@ class SocketServer:
                         box.center_y -= offset[0]*np.sin(yaw) + offset[1]*np.cos(yaw)
                         yaw = yaw + np.pi/32
                     detection_results.box3d_array.append(box)
-                rospy.loginfo(f"BBox speed is {box.speed_x}, {box.speed_y}, {box.speed_angle}")
+                    rospy.loginfo(f"BBox speed is {box.speed_x}, {box.speed_y}, {box.speed_angle}")
                 detection_results.num_boxes = num_bboxes
                 detection_results.localization.utm_x = x   
                 detection_results.localization.utm_y = y

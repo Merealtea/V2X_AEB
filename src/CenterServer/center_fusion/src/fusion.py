@@ -17,9 +17,8 @@ import os
 abs_path = os.path.dirname(__file__).split("fusion.py")[0]
 sys.path.append(abs_path)
 from copy import deepcopy
-from sklearn.cluster import DBSCAN
 from utils import nms_depth
-import deque
+from collections import deque
 
 def linear_assignment(cost_matrix):
   try:
@@ -39,7 +38,7 @@ def pairwise_assignment(track_array1, track_array2, cost_threshold):
     # calculate the cost matrix
     track1_position = np.expand_dims(track_array1[:, :2], axis=1)
     track2_position = np.expand_dims(track_array2[:, :2], axis=0)
-    cost_matrix = np.norm(track1_position - track2_position, dim=2)
+    cost_matrix = np.linalg.norm(track1_position - track2_position, axis=2)
 
     # assign the track
     if min(cost_matrix.shape) > 0:
@@ -55,7 +54,7 @@ def pairwise_assignment(track_array1, track_array2, cost_threshold):
     unmatched_track1 = []
     unmatched_track2 = []
     for t, trk in enumerate(track_array1):
-        if(d not in matched_indices[:,0]):
+        if(t not in matched_indices[:,0]):
             unmatched_track1.append(t)
     
     for t, trk in enumerate(track_array2):
@@ -144,9 +143,10 @@ class DetectionFusion:
 
         for vehicle_id in self.vehicle_res_dict.keys():
             if vehicle_id == "rock":
-                vehicle_id = -1
+                vehicle_name = -1
             else:
-                vehicle_id = -2
+                vehicle_name = -2
+       
             msg = self.vehicle_res_dict[vehicle_id][-1]
             vehicle_box = Box3D()
             vehicle_box.center_x = msg.localization.utm_x
@@ -156,7 +156,7 @@ class DetectionFusion:
             vehicle_box.length = 1.9  
             vehicle_box.height = 1.6
             vehicle_box.heading = msg.localization.heading
-            vehicle_box.id = vehicle_id
+            vehicle_box.id = vehicle_name
             new_msg.box3d_array.append(vehicle_box)
             for box in msg.box3d_array:
                 new_msg.box3d_array.append(box)
@@ -177,14 +177,15 @@ class DetectionFusion:
 
             for vehicle_id in self.vehicle_res_dict:
                 time_diff = cur_time - self.prev_time[vehicle_id]
+                
                 if time_diff > self.max_age:
                     continue
-
+                msg = self.vehicle_res_dict[vehicle_id][-1]
                 bbox_array = []
-                localization = self.vehicle_res_dict[vehicle_id][-1].localization
+                localization = msg.localization
                 vehicle_localization.append([localization.utm_x, localization.utm_y, localization.heading])
 
-                msg = self.vehicle_res_dict[vehicle_id][-1]
+                
                 for i in range(msg.num_boxes):
                     box = msg.box3d_array[i]
                     bbox_array.append([box.center_x + time_diff * box.speed_x, 
@@ -197,12 +198,16 @@ class DetectionFusion:
 
                 vehicle_align_result[vehicle_id] = bbox_array
 
-            vehicle_localization = np.array(vehicle_localization)
+            vehicle_localization = np.array(vehicle_localization).reshape(-1, 3)
             distance = np.linalg.norm(np.expand_dims(vehicle_localization[:, :2], axis = 0) - 
                                       np.expand_dims(vehicle_localization[:, :2], axis = 1), axis=2)
             connection_graph = np.triu(distance < self.fusion_distance, 1)
             edges = np.where(connection_graph)
             vehicle_ids = list(self.vehicle_res_dict.keys())
+            
+            for vehicle_id in vehicle_align_result:
+                for idx in range(len(vehicle_align_result[vehicle_id])):
+                    prediction_results[(vehicle_id, idx)] = {(vehicle_id, idx)}
 
             for i, j in zip(edges[0], edges[1]):
                 first_vehicle_id = vehicle_ids[i]
@@ -219,35 +224,33 @@ class DetectionFusion:
                 for m in matched:
                     box_1 = (first_vehicle_id, m[0])
                     box_2 = (second_vehicle_id, m[1])
-                    if box_1 not in prediction_results:
-                        prediction_results[box_1] = {box_1}
-                    if box_2 not in prediction_results:
-                        prediction_results[box_2] = {box_2}
-                    prediction_results[box_1].add(box_2)
-                    prediction_results[box_2].add(box_1)
-                
-                for u in unmatched_first:
-                    box_1 = (first_vehicle_id, u)
-                    if box_1 not in prediction_results:
-                        prediction_results[box_1] = {box_1}
-                
-                for u in unmatched_second:
-                    box_2 = (second_vehicle_id, u)
-                    if box_2 not in prediction_results:
-                        prediction_results[box_2] = {box_2}
+                    rospy.loginfo("Matched {} and {}".format(box_1, box_2))
+                    union_set = prediction_results[box_1] | prediction_results[box_2] 
+                    prediction_results[box_1] = union_set
+                    prediction_results[box_2] = union_set
 
+            visited = dict(zip(prediction_results.keys(), [False] * len(prediction_results)))
             # 所有的匹配结果
-            all_matched = list(set(prediction_results.values()))
+            cluster_idx = 0
+            cluster_res = {}
+            
+            for box_idx in prediction_results:
+                if visited[box_idx]:
+                    continue
+                relevant_box_idxes = prediction_results[box_idx]
+                cluster_res[cluster_idx] = []
+                for vehicle_id, box_id in relevant_box_idxes:
+                    cluster_res[cluster_idx].append(vehicle_align_result[vehicle_id][box_id])
+                    visited[(vehicle_id, box_id)] = True
+                cluster_idx += 1
 
             # 融合结果
-            for idx, matched in enumerate(all_matched):
-                box_array = []
-                for vehicle_id, box_id in matched:
-                    box = vehicle_align_result[vehicle_id][box_id]
-                    box_array.append(box)
-                box_array = np.array(box_array)
+            rospy.loginfo("Cluster {} results".format(len(cluster_res)))
+            for cluster_idx in cluster_res:
+                box_array = np.array(cluster_res[cluster_idx])
+
                 cluster_center = np.mean(box_array, axis=0)
-                distance = np.linalg.norm(box_array[:, :2] - cluster_center[:2], axis=1)
+                distance = np.linalg.norm(box_array[:, :2] - cluster_center[:2], axis=1) + 1e-6
                 fusion_weight = distance / np.sum(distance)
                 fusion_box = np.sum(box_array * np.expand_dims(fusion_weight, axis=1), axis=0)
 
@@ -259,7 +262,7 @@ class DetectionFusion:
                 fusion_res.length = fusion_box[4]
                 fusion_res.height = fusion_box[5]
                 fusion_res.heading = fusion_box[6]
-                fusion_res.id = idx
+                fusion_res.id = cluster_idx
                 fusion_results.box3d_array.append(fusion_res)
             
             fusion_results.num_boxes = len(fusion_results.box3d_array)
@@ -267,7 +270,7 @@ class DetectionFusion:
             self.fusion_result_pub.publish(fusion_results)
             self.fusion_results = []
 
-            rospy.loginfo("Send fusion results")
+            rospy.loginfo("Send fusion results with {} boxes ".format(fusion_results.num_boxes))
 
             rate.sleep()
 
