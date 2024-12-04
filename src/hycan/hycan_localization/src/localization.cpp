@@ -36,8 +36,10 @@ public:
         double corrected_heading = heading_msg->data + M_PI;// + convergence_angle;
         ROS_INFO("Corrected Heading: %f radians", corrected_heading);
 
-        // From utm to rear 
-
+        // Get rear localization in UTM coordination 
+        corrected_heading += M_PI / 128 * 3;
+        vhx = vhx + hycan_x_offset * cos(corrected_heading) - hycan_y_offset * sin(corrected_heading);
+        vhx = vhy + hycan_x_offset * sin(corrected_heading) + hycan_y_offset * cos(corrected_heading);
 
         hycan_msgs::Localization localization_msg;
         localization_msg.utm_x = vhx;
@@ -60,6 +62,9 @@ private:
     boost::shared_ptr<message_filters::Synchronizer<MySyncPolicy>> sync_;
     message_filters::Subscriber<sensor_msgs::NavSatFix> gps_sub;
     message_filters::Subscriber<cyber_msgs::Heading> heading_sub;
+
+    double hycan_x_offset = 0.12;
+    double hycan_y_offset = 0.95;
 
     double vhx, vhy;
     const double central_meridian = 120;
