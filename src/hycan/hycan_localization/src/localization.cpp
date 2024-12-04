@@ -36,6 +36,9 @@ public:
         double corrected_heading = heading_msg->data + M_PI;// + convergence_angle;
         ROS_INFO("Corrected Heading: %f radians", corrected_heading);
 
+        // From utm to rear 
+
+
         hycan_msgs::Localization localization_msg;
         localization_msg.utm_x = vhx;
         localization_msg.utm_y = vhy;
