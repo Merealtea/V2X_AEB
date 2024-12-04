@@ -1,37 +1,20 @@
-from copy import deepcopy
-import rosbag  
-import rospy
-from sensor_msgs.msg import Image
-from cyber_msgs.msg import Heading
-import numpy as np
-import matplotlib.pyplot as plt
-from sensor_msgs.msg import NavSatFix
-from message_filters import ApproximateTimeSynchronizer, Subscriber
-
-import numpy as np
 import math
+import numpy as np
+import rospy
+from visualization_msgs.msg import Marker, MarkerArray
+import scipy
 
-GLOBAL_ZERO_X = 351425.09269358893
-GLOBAL_ZERO_Y = 3433830.3251591502
+hycan_gps_topic = '/strong/fix'
+hycan_heading_topic = '/strong/heading'
+rock_gps_topic = '/Inertial/gps/fix'
+rock_imu_topic = '/Inertial/imu/data'
+rock_lidar_topic = '/driver/hesai/pandar'
+hycan_lidar_topic = '/livox/lidar'
 
-
-# From wgs84 to utm
-
-length = 4.6
-width = 1.9
-bounding_box = np.array([[length/2, width/2],
-                            [length/2, -width/2],
-                            [-length/2, -width/2],
-                            [-length/2, width/2],
-                            [length/2, width/2],])
-    
-bounding_boxes = []
-yaws = []
-points = []
-i = 0
-max_frame =400
 min_x , min_y = 1e9, 1e9
 max_x, max_y = -1e9, -1e9
+GLOBAL_ZERO_X = 351425.09269358893
+GLOBAL_ZERO_Y = 3433830.3251591502
 
 # WGS84 Parameters
 
@@ -56,7 +39,26 @@ LongOriginCustom = 121.43371749
 RADIANS_PER_DEGREE = math.pi / 180.0
 DEGREES_PER_RADIAN = 180.0 / math.pi
 
-idx= 0
+hycan_length = 4.6
+hycan_width = 1.9
+rock_length = 4.5
+rock_width = 1.8
+hycan_x_offset = 1.425
+hycan_y_offset = 0.475  * 2
+rock_x_offset = 0.96
+rock_y_offset = 0
+
+hycan_bounding_box = np.array([[hycan_length/2, hycan_width/2],
+                            [hycan_length/2, -hycan_width/2],
+                            [-hycan_length/2, -hycan_width/2],
+                            [-hycan_length/2, hycan_width/2],
+                            [hycan_length/2, hycan_width/2],]) + np.array([hycan_x_offset, hycan_y_offset])
+rock_bounding_box = np.array([[rock_length/2, rock_width/2],
+                            [rock_length/2, -rock_width/2],
+                            [-rock_length/2, -rock_width/2],
+                            [-rock_length/2, rock_width/2],
+                            [rock_length/2, rock_width/2],]) + np.array([rock_x_offset, rock_y_offset])
+    
 
 def LLtoUTM( Lat, Long, UTMZone):
     a = WGS84_A
@@ -134,6 +136,34 @@ def LLtoUTM( Lat, Long, UTMZone):
     return [UTMEasting, UTMNorthing]
 
 
+def merge_msgs(msgs_list):
+    merged_msgs = []
+    for msgs in msgs_list:
+        for topic, msg, t in msgs:
+            merged_msgs.append([topic, msg, t])
+
+    merged_msgs = sorted(merged_msgs, key=lambda x: x[2])
+    return merged_msgs
+
+def hycan_localization(gps, heading):
+    hycan_lat, hycan_lon = gps.latitude, gps.longitude
+    position = LLtoUTM(hycan_lat, hycan_lon, "32")
+    yaw = heading.data 
+    return position, yaw
+
+def rock_localization(gps, imu):
+    rock_lat, rock_lon = gps.latitude, gps.longitude
+    position = LLtoUTM(rock_lat, rock_lon, "32")
+    lat = gps.latitude
+    lon = gps.longitude
+    # Get Orientation
+    utm = LLtoUTM(lat, lon, "32")
+
+    heading = np.arctan2(2.0 * (imu.orientation.w * imu.orientation.z + imu.orientation.x * imu.orientation.y),   
+                        1.0 - 2.0 * (imu.orientation.y * imu.orientation.y + imu.orientation.z * imu.orientation.z))
+    return position, heading
+
+
 def compute_convergence_angle(lon, lat, central_meridian):
     # 计算经度偏差
     delta_lon = math.radians(lon - central_meridian)
@@ -141,95 +171,41 @@ def compute_convergence_angle(lon, lat, central_meridian):
     convergence_angle = delta_lon * math.sin(math.radians(lat))
     return math.degrees(convergence_angle)
 
-def callback(gps, heading):
-    global i, min_x, min_y, max_x, max_y,central_meridian
-    hycan_lat, hycan_lon = gps.latitude, gps.longitude
-    position = LLtoUTM(hycan_lat, hycan_lon, "32")
-    # lon1 = last_gps.longitude * RADIANS_PER_DEGREE;
-    # lat1 = last_gps.latitude * RADIANS_PER_DEGREE;
-    # lon2 = current_gps.longitude * RADIANS_PER_DEGREE;
-    # lat2 = current_gps.latitude * RADIANS_PER_DEGREE;
 
-    # dLon = lon2 - lon1;
-    # y = sin(dLon) * cos(lat2);
-    # x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
-    # gps_heading = atan2(y, x);
-
-    # corrected_heading = gps_heading + imu_yaw;
-    # // Convert radians to degrees
-    # corrected_heading = corrected_heading * DEGREES_PER_RADIAN;
-
-    yaw = heading.data  #+ compute_convergence_angle(gps.longitude, gps.latitude, central_meridian) 
+def transform_bbox(bbox, position, yaw):
     rotation_matrix = np.array([[np.cos(yaw), -np.sin(yaw)],
                                 [np.sin(yaw), np.cos(yaw)]])
-    
-    rotated_box = np.dot(bounding_box, rotation_matrix.T)
+    rotated_box = np.dot(bbox, rotation_matrix.T)
     rotated_box += np.array(position).reshape(1, 2)
-    
-    i += 1
+    return rotated_box
 
-    if i %  10 == 0:
-        if min_x > position[0]:
-            min_x = position[0]
-        if min_y > position[1]:
-            min_y = position[1]
-        if max_x < position[0]:
-            max_x = position[0]
-        if max_y < position[1]:
-            max_y = position[1]
-        yaws.append(yaw)
-        points.append(position)
-        bounding_boxes.append(rotated_box)
-            # import pdb; pdb.set_trace()
-    
+def create_marker(id, color, box):
+    marker = Marker()
+    marker.id = id
+    marker.header.frame_id = "map"
+    marker.type = marker.CUBE
+    marker.action = marker.ADD
+    marker.scale.x = box.length  # 长度
+    marker.scale.y = box.width  # 宽度
+    marker.scale.z = box.height  # 高度，设为一个较小的值
+    # marker.lifetime = rospy.Duration(0.2)
 
+    marker.header.stamp = rospy.Time.now()
+    marker.pose.position.x = box.center_x 
+    marker.pose.position.y = box.center_y 
+    marker.pose.position.z = box.center_z
 
-if __name__ == "__main__":
-    rospy.init_node('hycan_bag')
-    hycan_bag_path = "/mnt/pool1/V2X_AEB/data/2024-11-29-16-49-43_Hycan.bag"
-    
-    # 打开两个rosbag文件
-    bag = rosbag.Bag(hycan_bag_path, 'r')
+    # 设置方向
+    # 使用scipy将欧拉角转换为四元数
+    orientation = scipy.spatial.transform.Rotation.from_euler('zyx', [box.heading, 0, 0]).as_quat()
+    marker.pose.orientation.x = orientation[0]
+    marker.pose.orientation.y = orientation[1]
+    marker.pose.orientation.z = orientation[2]
+    marker.pose.orientation.w = orientation[3]
 
-    gps_topic = '/strong/fix'
-    heading_topic = '/strong/heading'
-
-     # 创建message_filters的Subscriber对象
-    subscribers = [Subscriber(gps_topic, NavSatFix),
-                   Subscriber(heading_topic, Heading)]
-    
-    # 创建ApproximateTimeSynchronizer对象
-    ts = ApproximateTimeSynchronizer(subscribers, 10, 0.1)
-    ts.registerCallback(callback)
-
-    # 读取bag文件并触发callbacks 
-    for topic, msg, t in bag.read_messages(topics=[gps_topic, heading_topic]):
-        for sub in subscribers:
-            if topic == sub.name:
-                sub.signalMessage(msg)
-
-    bag.close()
-
-    fig, ax = plt.subplots()
-    ax.set_aspect('equal', adjustable='box')
-
-    ax.set_ylim(min_y-10, max_y+10)        
-    ax.set_xticks(np.arange(min_x-10, max_x+10, 1))
-    ax.set_yticks(np.arange(min_y-10, max_y+10, 1))
-    
-    points= np.array(points)
-    # 绘制轨迹
-    # plt.plot(points[:, 0], points[:, 1], label="Trajectory")
-
-    # # 在每个点上绘制表示朝向的箭头
-    # for i in range(len(points)):
-    #     x, y = points[i]
-    #     angle = yaws[i]
-    #     # 使用箭头来表示朝向
-    #     dx = np.cos(angle) * 0.5  # 箭头的x分量
-    #     dy = np.sin(angle) * 0.5  # 箭头的y分量
-    #     plt.arrow(x, y, dx, dy, head_width=0.2, head_length=0.2, fc='r', ec='r')
-
-    for box in bounding_boxes:
-        ax.plot(box[:, 0], box[:, 1], 'r')
-    plt.savefig('bounding_box.png', dpi = 600)
+    # 设置颜色
+    marker.color.a = 0.4  # Alpha, 1表示完全不透明
+    marker.color.r = color[0]  # 红色
+    marker.color.g = color[1]  # 绿色
+    marker.color.b = color[2]  # 蓝色
+    return marker

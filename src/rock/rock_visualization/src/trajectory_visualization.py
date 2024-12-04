@@ -24,6 +24,9 @@ class Visualization:
         self.init_y = None
         self.yaw = None
 
+        self.x_offset = 0.96
+        self.y_offset = 0
+
         config_path = os.path.abspath(__file__).split('rock')[0] + '/common/config/rock_vis_config.rviz'
         os.system(f'rosrun rviz rviz -d {config_path}')
 
@@ -152,8 +155,8 @@ class Visualization:
         marker = self.vehicle_marker()
 
         marker.header.stamp = rospy.Time.now()
-        marker.pose.position.x = 0
-        marker.pose.position.y = 0
+        marker.pose.position.x = self.x_offset * np.cos(yaw) - self.y_offset * np.sin(yaw)
+        marker.pose.position.y = self.x_offset * np.sin(yaw) + self.y_offset * np.cos(yaw)
         marker.pose.position.z = 0.85  # 高度，设为一个较小的值
 
         # 设置方向

@@ -2,6 +2,7 @@ from copy import deepcopy
 import rosbag  
 import rospy
 from sensor_msgs.msg import Image
+from sensor_msgs.msg import NavSatFix, Imu
 from cyber_msgs.msg import Heading
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,7 +17,6 @@ GLOBAL_ZERO_X = 351425.09269358893
 GLOBAL_ZERO_Y = 3433830.3251591502
 
 # 读取PCD文件
-pcd = o3d.io.read_point_cloud("/mnt/pool1/outside_parking/color_map.pcd")
 length = 4.6
 width = 1.9
 height = 1.65
@@ -114,11 +114,36 @@ def callback(hycan_gps, hycan_heading): #, rock_gps, rock_imu):
                                                         [np.sin(corrected_heading), np.cos(corrected_heading), 0],
                                                         [0, 0, 1]]))
 
-    vehicle_points = np.array([[utm[0], utm[1], 0]]) + vehicle_points
+    vehicle_points = np.array([[utm[1], utm[0], 0]]) + vehicle_points
 
     rospy.loginfo("Corrected Heading: {} radians".format(corrected_heading))
 
     
+    # Create a new point cloud
+    traj.append(vehicle_points)
+
+def rock_callback(rock_gps, rock_imu): #, rock_gps, rock_imu):
+    global new_bag, points, LongOriginCustom, RADIANS_PER_DEGREE, DEGREES_PER_RADIAN, traj, idx 
+    idx += 1
+    if idx % 30:
+        return
+
+    lat = rock_gps.latitude
+    lon = rock_gps.longitude
+    # Get Orientation
+    utm = LLtoUTM(lat, lon, "32")
+
+    heading = np.arctan2(2.0 * (rock_imu.orientation.w * rock_imu.orientation.z + rock_imu.orientation.x * rock_imu.orientation.y),   
+                        1.0 - 2.0 * (rock_imu.orientation.y * rock_imu.orientation.y + rock_imu.orientation.z * rock_imu.orientation.z))
+    # heading = heading + math.pi / 2
+
+    vehicle_points = np.dot(deepcopy(points), np.array([[np.cos(heading), -np.sin(heading), 0],
+                                                        [np.sin(heading), np.cos(heading), 0],
+                                                        [0, 0, 1]]))
+
+    vehicle_points = np.array([[utm[1], utm[0], 0]]) + vehicle_points
+
+
     # Create a new point cloud
     traj.append(vehicle_points)
 
@@ -202,50 +227,65 @@ if __name__ == "__main__":
     rospy.init_node('localization_analysis')
 
     # 创建两个Subscriber对象
-    # rock_imu_sub = Subscriber("/Inertial/imu/data", Imu)
-    # rock_gps_sub = Subscriber('/Inertial/gps/fix', NavSatFix)
+    rock_imu_sub = Subscriber("/Inertial/imu/data", Imu)
+    rock_gps_sub = Subscriber('/Inertial/gps/fix', NavSatFix)
 
-    hycan_imu_sub = Subscriber("/strong/fix", Imu)
-    hycan_gps_sub = Subscriber('/strong/heading', Heading)
+    # hycan_imu_sub = Subscriber("/strong/fix", Imu)
+    # hycan_gps_sub = Subscriber('/strong/heading', Heading)
 
-    hycan_bag_path = "/mnt/pool1/cameras_undi.bag"
-    # rock_bag_path = "/mnt/pool1/outside_parking/both/2024-09-02-20-38-51.bag"
+    # hycan_bag_path = "/mnt/pool1/cameras_undi.bag"
+    rock_bag_path = "/mnt/pool1/V2X_AEB/data/2024-11-28-14-57-46_Rock.bag"
     
     # 打开两个rosbag文件
-    hycan_bag = rosbag.Bag(hycan_bag_path, 'r')
-    # rock_bag = rosbag.Bag(rock_bag_path, 'r') 
+    # hycan_bag = rosbag.Bag(hycan_bag_path, 'r')
+    rock_bag = rosbag.Bag(rock_bag_path, 'r') 
 
     # new_bag = rosbag.Bag("/mnt/pool1/outside_parking/both/merged.bag", 'w')
 
+    # # 创建ApproximateTimeSynchronizer
+    # sync = ApproximateTimeSynchronizer([hycan_gps_sub, hycan_imu_sub],\
+    #                                     queue_size=10, slop=0.1)
+    # sync.registerCallback(callback)
+
     # 创建ApproximateTimeSynchronizer
-    sync = ApproximateTimeSynchronizer([hycan_gps_sub, hycan_imu_sub],\
+    sync = ApproximateTimeSynchronizer([rock_gps_sub, rock_imu_sub],\
                                         queue_size=10, slop=0.1)
-    sync.registerCallback(callback)
+    sync.registerCallback(rock_callback)
 
     # 合并两个bag的消息迭代器
-    # rock_bag_msgs = rock_bag.read_messages(topics=['/Inertial/gps/fix', '/Inertial/imu/data'])
-    hycan_bag_msgs = hycan_bag.read_messages(topics=['/strong/fix', '/strong/heading'])
+    rock_bag_msgs = rock_bag.read_messages(topics=['/Inertial/gps/fix', '/Inertial/imu/data'])
+    # hycan_bag_msgs = hycan_bag.read_messages(topics=['/strong/fix', '/strong/heading'])
     # merged_msgs = sorted(list(rock_bag_msgs) + list(hycan_bag_msgs), key=lambda x: x[2])  # 按时间戳排序
 
     # 读取bag文件并触发callbacks
-    for topic, msg, t in hycan_bag_msgs:
-        if topic == '/strong/fix':
-            hycan_gps_sub.signalMessage(msg)
-        elif topic == '/strong/heading':
-            hycan_imu_sub.signalMessage(msg)
-        # elif topic == '/Inertial/gps/fix':
-        #     rock_gps_sub.signalMessage(msg)
-        # elif topic == '/Inertial/imu/data':
-        #     rock_imu_sub.signalMessage(msg)
+    for topic, msg, t in rock_bag_msgs:
+        # if topic == '/strong/fix':
+        #     hycan_gps_sub.signalMessage(msg)
+        # elif topic == '/strong/heading':
+        #     hycan_imu_sub.signalMessage(msg)
+        if topic == '/Inertial/gps/fix':
+            rock_gps_sub.signalMessage(msg)
+        elif topic == '/Inertial/imu/data':
+            rock_imu_sub.signalMessage(msg)
     
-    traj = np.array(traj).reshape(-1, 3)
-    combined_points = np.vstack((np.asarray(pcd.points), traj))
 
-    # 创建新的点云对象
-    new_pcd = o3d.geometry.PointCloud()
-    new_pcd.points = o3d.utility.Vector3dVector(combined_points)
+    fig, ax = plt.subplots()
+    ax.set_aspect('equal', adjustable='box')
 
-    # 保存新的PCD文件
-    o3d.io.write_point_cloud("./new_pointcloud_with_rectangle.pcd", new_pcd)
+    for box in traj:
+        # 绘制车辆包围盒
+        # import pdb; pdb.set_trace()
+        ax.plot(box[:, 0], box[:, 1], 'r')
+    
 
-    print("Point cloud with rectangle vertices saved successfully.")
+    # # 将x轴与y轴翻转
+    ax.invert_yaxis()
+    
+    plt.savefig('bounding_box.png', dpi = 600)
+
+    # print("hycan image process time mean is {}".format(np.mean(hycan_image_process_time)))
+    # print("hycan comm time mean is {}".format(np.mean(hycan_comm_time)))
+
+    # print("rock image process time mean is {}".format(np.mean(rock_image_process_time)))
+    # print("rock comm time mean is {}".format(np.mean(rock_comm_time)))
+
