@@ -80,8 +80,8 @@ def draw_boxes_callback(front_cam,
     
     localization = track_res.localization
     utm_x, utm_y, heading = localization.utm_x, localization.utm_y, localization.heading
-    if vehicle != "Hycan":
-        heading += np.pi 
+    # if vehicle != "Hycan":
+    #     heading += np.pi / 2 
     if len(box_array) > 0:
     
         box_array[:, :2] = box_array[:, :2] - np.array([utm_x, utm_y])

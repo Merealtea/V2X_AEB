@@ -37,12 +37,21 @@ vehicle_center = np.array([17.4442, 14.4884, 0]) # rock
 vehicle_rot = np.array([0, 0, -0.999677, 0.02543])
 center_to_rear_center = np.array([1.2975, 0, 0])
 
-rock_lidar_calib = np.array([[1.0, 0.0, 0.0, 0],
-                            [0.0, 1.0, 0.0, 0],
-                            [0.0, 0.0, 1.0, 1.7],
-                            [0.0, 0.0, 0.0, 1.0]])
-np.savetxt("rock_lidar_calib.csv", rock_lidar_calib, delimiter=",")
+import tf
+import scipy
 
+Pandar_transition = [1.15, 0 , 1.96]
+Pandar_rotation = [0.54, 1.26, 87.95]
+# 转欧拉角为四元数
+Pandar_rotation = scipy.spatial.transform.Rotation.from_euler('xyz', Pandar_rotation, degrees=True).as_quat()
+rock_lidar_calib = tf.transformations.translation_matrix(Pandar_transition) @ tf.transformations.quaternion_matrix(Pandar_rotation)
+
+# rock_lidar_calib = np.array([[1.0, 0.0, 0.0, 0],
+#                             [0.0, 1.0, 0.0, 0],
+#                             [0.0, 0.0, 1.0, 1.7],
+#                             [0.0, 0.0, 0.0, 1.0]])
+np.savetxt("rock_lidar_calib.csv", np.linalg.inv(rock_lidar_calib), delimiter=",")
+import pdb; pdb.set_trace()
 rock_rear = np.array([[1.0, 0.0, 0.0, 1.2975],
                     [0.0, 1.0, 0.0, 0.0],
                     [0.0, 0.0, 1.0, 0.0],
@@ -66,7 +75,7 @@ global_x_offset = 0.1
 global_y_offset = 0.5
 global_z_offset = 1.8
 
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()
 camera_bag = rosbag.Bag(camera_bag_path, 'r')
 
 history_points = []
@@ -122,7 +131,6 @@ def project_point_cloud(image_label, msgs, lidar_points, pitch, roll, yaw, x_off
             # cam_points = cam_points[:, sort_idx]
             # depth = depth[sort_idx]
             image_points = cam_models[key].cam2image(cam_points)
-
             # 将深度值归一化到 [0, 255]
             normalized_depth = np.clip(depth / 10, 0, 1) * 255
             normalized_depth = np.uint8(normalized_depth)
