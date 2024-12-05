@@ -18,7 +18,7 @@ class Visualization:
 
         rospy.Subscriber('hycan_detection_results', DetectionResults, self.detection_callback)
         rospy.Subscriber('hycan_track_results', DetectionResults, self.track_callback)
-        rospy.Subscriber('fusion_results', DetectionResults, self.fusion_callback)
+        rospy.Subscriber('hycan_fusion_results', DetectionResults, self.fusion_callback)
         rospy.Subscriber('hycan_utm_localization', Localization, self.callback)
         self.init_x = None
         self.init_y = None

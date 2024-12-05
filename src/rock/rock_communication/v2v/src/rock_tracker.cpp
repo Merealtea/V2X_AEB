@@ -64,14 +64,16 @@ public:
         // 转换检测结果到激光雷达坐标系
 
         // 转换检测结果到世界坐标系
-        float heading = msg->localization.heading;
-        float utm_x = msg->localization.utm_x;
-        float utm_y = msg->localization.utm_y;
+        double vehicle_heading = msg->localization.heading;
+        ROS_INFO("Receive localization is %f", vehicle_heading);
+
+        double utm_x = msg->localization.utm_x;
+        double utm_y = msg->localization.utm_y;
 
         // 生成转换矩阵
         Eigen::Matrix3f tf_matrix;
-        tf_matrix << cos(heading), -sin(heading), utm_x,
-                     sin(heading), cos(heading), utm_y,
+        tf_matrix << cos(vehicle_heading), -sin(vehicle_heading), utm_x,
+                     sin(vehicle_heading), cos(vehicle_heading), utm_y,
                      0, 0, 1;
 
         // 读取检测结果
@@ -97,9 +99,9 @@ public:
 
             // 转换到世界坐标系
             position_lidar = tf_matrix * position_lidar;
-            position(2) = box.center_z;
+            position(2) = z;
 
-            BoundingBox bbox(position_lidar, size, mod_angle(box.heading + heading + lidar2GPS_yaw), box.score);
+            BoundingBox bbox(position_lidar, size, mod_angle(box.heading + vehicle_heading + lidar2GPS_yaw), box.score);
             boundingBoxes.push_back(bbox);
         }
 
@@ -149,6 +151,7 @@ public:
         track_res.num_boxes = track_res.box3d_array.size();
 
         track_pub.publish(track_res);
+        ROS_INFO("Track localization is %f, %f, %f", track_res.localization.utm_x, track_res.localization.utm_y, track_res.localization.heading);
         ROS_INFO("FPS in tracker is %f", 1.0 / (ros::Time::now() - st_time).toSec());
         ROS_INFO("Send %d tracking results", track_res.box3d_array.size());
     }

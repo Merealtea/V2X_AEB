@@ -30,7 +30,7 @@ class SocketClient:
         self.fmt = "ddiIIddd"
         self.get_fmt_length()
 
-        self.fusion_pub = rospy.Publisher('fusion_results', DetectionResults, queue_size=10)
+        self.fusion_pub = rospy.Publisher('hycan_fusion_results', DetectionResults, queue_size=10)
         self.prev_time = None
 
     def __del__(self):
@@ -87,7 +87,7 @@ class SocketClient:
                            box.heading, box.id, box.speed_x, box.speed_y,
                            box.speed_angle, box.score]
                     boxes_array.append(box)
-                print(boxes_array)
+
                 boxes_array = np.array(boxes_array, dtype=np.float32).tobytes()
                 count = len(boxes_array)
                 image_stamp = msg.image_stamp.to_sec() 
