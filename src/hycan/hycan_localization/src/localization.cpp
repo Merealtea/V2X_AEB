@@ -39,7 +39,7 @@ public:
         // Get rear localization in UTM coordination 
         corrected_heading += M_PI / 128 * 3;
         vhx = vhx + hycan_x_offset * cos(corrected_heading) - hycan_y_offset * sin(corrected_heading);
-        vhx = vhy + hycan_x_offset * sin(corrected_heading) + hycan_y_offset * cos(corrected_heading);
+        vhy = vhy + hycan_x_offset * sin(corrected_heading) + hycan_y_offset * cos(corrected_heading);
 
         hycan_msgs::Localization localization_msg;
         localization_msg.utm_x = vhx;
