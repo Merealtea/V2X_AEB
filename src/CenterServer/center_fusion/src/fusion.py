@@ -34,14 +34,13 @@ def pairwise_assignment(track_array1, track_array2, cost_threshold):
     """
         track_array is [x, y, z, l, w, h, yaw, global_id, score]
     """
-    
-    # calculate the cost matrix
-    track1_position = np.expand_dims(track_array1[:, :2], axis=1)
-    track2_position = np.expand_dims(track_array2[:, :2], axis=0)
-    cost_matrix = np.linalg.norm(track1_position - track2_position, axis=2)
-
     # assign the track
-    if min(cost_matrix.shape) > 0:
+    if min(len(track_array1), len(track_array2)) > 0:
+        # calculate the cost matrix
+        track1_position = np.expand_dims(track_array1[:, :2], axis=1)
+        track2_position = np.expand_dims(track_array2[:, :2], axis=0)
+        cost_matrix = np.linalg.norm(track1_position - track2_position, axis=2)
+
         a = (cost_matrix < cost_threshold).astype(np.int32)
         if a.sum(1).max() == 1 and a.sum(0).max() == 1:
             matched_indices = np.stack(np.where(a), axis=1)
@@ -156,6 +155,7 @@ class DetectionFusion:
             vehicle_box.length = 1.9  
             vehicle_box.height = 1.6
             vehicle_box.heading = msg.localization.heading
+            
             vehicle_box.id = vehicle_name
             new_msg.box3d_array.append(vehicle_box)
             for box in msg.box3d_array:
@@ -194,7 +194,10 @@ class DetectionFusion:
                                        box.width, box.length, box.height,
                                        box.heading, box.score, -1])
                 bbox_array = np.array(bbox_array, dtype=np.float32)
-                bbox_array = bbox_array.reshape(msg.num_boxes, -1)
+                if bbox_array.shape[0] != 0:
+                    bbox_array = bbox_array.reshape(msg.num_boxes, -1)
+                else:
+                    bbox_array = np.zeros((0,10))
 
                 vehicle_align_result[vehicle_id] = bbox_array
 

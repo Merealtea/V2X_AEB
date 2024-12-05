@@ -108,6 +108,7 @@ class SocketServer:
                         struct.unpack(self.fmt, header) 
 
                 rospy.loginfo(f"Receive image data from {vehicle}: {send_timestamp},  {count}")
+                rospy.loginfo('{} localization is {}, {}, {}'.format(vehicle, x, y, yaw))
                 data = b''
                 while len(data) < count:
                     data += client.recv(count - len(data))
@@ -139,12 +140,12 @@ class SocketServer:
                     box.speed_y = data[i][10]
                     box.speed_angle = data[i][11]
 
-                    if vehicle == 'hycan':
-                        offset = np.array([0.9, 0.3])
-                        yaw = yaw - np.pi/32
-                        box.center_x -= offset[0]*np.cos(yaw) - offset[1]*np.sin(yaw)
-                        box.center_y -= offset[0]*np.sin(yaw) + offset[1]*np.cos(yaw)
-                        yaw = yaw + np.pi/32
+                    # if vehicle == 'hycan':
+                    #     offset = np.array([0.9, 0.3])
+                    #     yaw = yaw - np.pi/32
+                    #     box.center_x -= offset[0]*np.cos(yaw) - offset[1]*np.sin(yaw)
+                    #     box.center_y -= offset[0]*np.sin(yaw) + offset[1]*np.cos(yaw)
+                    #     yaw = yaw + np.pi/32
                     detection_results.box3d_array.append(box)
                     rospy.loginfo(f"BBox speed is {box.speed_x}, {box.speed_y}, {box.speed_angle}")
                 detection_results.num_boxes = num_bboxes
