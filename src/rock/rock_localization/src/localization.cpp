@@ -32,7 +32,7 @@ public:
         // Get postition
         char* zone = nullptr;
         LLtoUTM(gps_msg->latitude, gps_msg->longitude, vhy, vhx, zone);
-        ROS_INFO("UTM Coordinates: Easting %f, Northing %f", vhx, vhy);
+        
         
         // Get Orientation
         double q0 = imu_msg->orientation.w;
@@ -42,8 +42,9 @@ public:
 
         // Calculate yaw from quaternion
         double imu_yaw = atan2(2.0 * (q0 * q3 + q1 * q2), 1.0 - 2.0 * (q2 * q2 + q3 * q3));
-        imu_yaw = imu_yaw; // * 50 / 64; // Correct for IMU orientation
-        
+        imu_yaw = double(int(imu_yaw * 1e6)) / 1e6;
+        // imu_yaw = imu_yaw; // * 50 / 64; // Correct for IMU orientation
+        ROS_INFO("UTM Coordinates: Easting %.2f, Northing %.2f, heading %.2f", vhx, vhy, imu_yaw);
         hycan_msgs::Localization localization_msg;
         localization_msg.utm_x = vhx;
         localization_msg.utm_y = vhy;
