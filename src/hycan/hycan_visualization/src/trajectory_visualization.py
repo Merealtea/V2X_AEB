@@ -24,6 +24,9 @@ class Visualization:
         self.init_y = None
         self.yaw = None
 
+        self.x_offset = 1.425
+        self.y_offset = 0
+
         config_path = os.path.abspath(__file__).split('hycan')[0] + '/common/config/hycan_vis_config.rviz'
         os.system(f'rosrun rviz rviz -d {config_path}')
 
@@ -182,8 +185,8 @@ class Visualization:
         marker.pose.orientation.w = orientation[3]
         
         arrow.header.stamp = rospy.Time.now()
-        arrow.pose.position.x = 0
-        arrow.pose.position.y = 0
+        arrow.pose.position.x = self.x_offset * np.cos(yaw) - self.y_offset * np.sin(yaw)
+        arrow.pose.position.y = self.x_offset * np.sin(yaw) + self.y_offset * np.cos(yaw)
         arrow.pose.position.z = 1.8
         arrow.pose.orientation.x = orientation[0]
         arrow.pose.orientation.y = orientation[1]

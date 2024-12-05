@@ -27,7 +27,7 @@ class ImageSubscriber:
             os.makedirs(os.path.join(src_path, '../debug'))
             rospy.loginfo("Created {} directory".format(os.path.join(src_path, 'debug')))
 
-        detection_sub = rospy.Subscriber('rock_detection_results', DetectionResults, self.detection_callback)
+        rospy.Subscriber('rock_detection_results', DetectionResults, self.detection_callback)
 
         self.ts = ApproximateTimeSynchronizer([front_sub, back_sub, right_sub, left_sub], queue_size=1, slop=0.1)
         self.ts.registerCallback(self.callback)

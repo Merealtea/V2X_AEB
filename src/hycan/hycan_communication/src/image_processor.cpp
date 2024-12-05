@@ -110,7 +110,7 @@ public:
             resized_img[i].original_width = original_width;
             resized_img[i].original_height = original_height;
             resized_img[i].ratio = ratio;
-            resized_img[i].stamp = st_time.toSec(); // msgs[i]->header.stamp.toSec(); // DEBUG
+            resized_img[i].stamp = msgs[i]->header.stamp.toSec(); // DEBUG
 
             memcpy(&resized_img[i].data, cv_image.data, RESIZED_IMG_SIZE);
         }
