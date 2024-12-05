@@ -94,6 +94,7 @@ class Detector:
         # start time
         st = time()
         rospy.loginfo("Received hycan images")
+
         frame_idxs, imgs, camera_ids, \
             width_no_pad, height_no_pad, \
                 original_width, original_height, \
@@ -170,6 +171,7 @@ class Detector:
         rospy.loginfo("Inference time : {}, detection results number is {}".format(time() - st, results.num_boxes))
         # localization and time delay
         rospy.loginfo("Localization: {}".format((msg.utm_x, msg.utm_y,msg.heading)))
+        rospy.loginfo("send localization: {}".format((results.localization.utm_x, results.localization.utm_y, results.localization.heading)))
         self.pub.publish(results)
 
         rospy.loginfo("Total time delay is : {}".format(rospy.Time.now().to_sec() - timestamp))
