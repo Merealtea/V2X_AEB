@@ -1,5 +1,4 @@
 # SJTU Cyberc3 V2X AEB
-上海交通大学智能车实验室车路云协同丐版代码仓库
 ***
 
 - [SJTU Cyberc3 V2X AEB](#sjtu-cyberc3-v2x-aeb)
@@ -31,27 +30,10 @@
 
 长安rock车辆由一个orin、一个Xavier和右nuc组成，负责接收摄像头数据和GPS定位数据，进行目标检测后将检测框发送到边缘云服务器。之后再接收边缘云服务器返回的融合结果，进行AEB控制。
 
-CyberRock
-  - Xavier
-    - 用户：nvidia
-    - password: nvidia
-  - NUC
-    - password: cyber
-  -Orin（ssh 直连）
-    - 用户：
-    - password: 
-
 ### 合创Hycan
 
 合创Hycan车辆由一个orin和一个Xavier组成，负责接收摄像头数据和GPS定位数据，进行目标检测后将检测框发送到边缘云服务器。之后再接收边缘云服务器返回的融合结果，进行AEB控制。
 
-Hycan
-  - Xavier
-    - 用户：nvidia
-    - password: nvidia
-  - Orin
-    - 用户：hycan
-    - password: 123
 
 ## 环境配置
 ### 中心云服务器
@@ -68,7 +50,7 @@ TBD:等后面写个脚本来配
 
 安装边缘云服务器，用网线连接路由器，电脑有线网口配置IP需要一段时间。等ifconfig命令显示有线网口有IPv4地址后，地址为192.168.10.100。如果地址最后为其他数字，则这个手动设置为静态IP，并改为192.168.10.100。
 
-车端开机后连接到WIFI WAVLINK-A28C，WIFI密码为cyber123。
+车端开机后连接到WIFI WAVLINK-A28C。
 
 ### 2. 时间同步
 在边缘云服务器上，运行以下命令：
